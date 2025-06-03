@@ -1,4 +1,4 @@
-from .random_lora_node import CR_RandomLoRACustom
+from .random_lora_node import andomLoRACustom
 
 NODE_CLASS_MAPPINGS = {
     "RandomLoRACustom": RandomLoRACustom,
