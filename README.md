@@ -45,4 +45,5 @@ To update the node:
 
 # Credits
 Suzie1 / [Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes) - got the randomize idea from it
+
 jitcoder / [lora-info](https://github.com/jitcoder/lora-info) - the trigger_words extraction is all from this node, just implemented in mine
