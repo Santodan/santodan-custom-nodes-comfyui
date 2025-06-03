@@ -13,7 +13,7 @@ from lora_info import get_lora_info
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
 
-class CR_RandomLoRACustom:
+class RandomLoRACustom:
     @classmethod
     def INPUT_TYPES(cls):
         loras = ["None"] + folder_paths.get_filename_list("loras")
