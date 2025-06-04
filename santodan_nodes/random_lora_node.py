@@ -112,4 +112,3 @@ class RandomLoRACustom:
         )
 
         return (output_loras, trigger_words_string, help_text)
-
