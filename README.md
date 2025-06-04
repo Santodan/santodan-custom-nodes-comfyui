@@ -2,7 +2,7 @@
 
 This is a standalone ComfyUI custom node for **randomizing LoRAs** with adjustable strength and support for automatic trigger word injection.
 
-> ✅ Now compatible with [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager) for one-click install!
+> ✅ Compatible with [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) by using the `💊 CR Apply LoRA Stack` from [Suzie1 / Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes)
 
 ---
 
@@ -91,4 +91,5 @@ Restart ComfyUI.
 
 ## 📸 Screenshot / Demo
 
-_Add your own screenshot here to show how the node looks in ComfyUI._
+![preview](preview/image.png)
+
