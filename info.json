@@ -1,0 +1,9 @@
+{
+  "name": "Santodan Random LoRA Node",
+  "author": "Santodan",
+  "description": "Randomizes selected LoRAs and strengths. Includes trigger word output and support for exclusive/random selection.",
+  "version": "1.0.0",
+  "output_folder": "",
+  "dependencies": [],
+  "url": "https://github.com/Santodan/ComfyUI_santodan_custom_nodes"
+}
