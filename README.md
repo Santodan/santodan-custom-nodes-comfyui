@@ -1,49 +1,94 @@
-# santodan Custom Nodes for ComfyUI
+# Santodan Custom Nodes for ComfyUI
 
-This is a work in progress repo. 
+This is a standalone ComfyUI custom node for **randomizing LoRAs** with adjustable strength and support for automatic trigger word injection.
 
-## Randomize LoRAs Node
-The Randomize LoRAs node randomly loads LoRAs based on a predefined selection with also randomized weights. This enables users to experiment with different artistic effects on their generated images.
+> ✅ Now compatible with [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager) for one-click install!
 
-__insertImage__
+---
 
-### How It Works
-Connect the **model** and **clip** outputs from this node to your KSampler or other processing nodes. The output, **chosen loras**, provides a textual representation detailing which LoRAs and corresponding weights were applied during the generation.
+## 🎲 Randomize LoRAs Node
 
-You can also provide the **trigger words** for each lora. They will be outputted as a formatted text separated by commas. Useful for you to concatenate the trigger words into your prompts.
+The **Randomize LoRAs** node lets you experiment by randomly selecting LoRAs from a list and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed.
 
-### Configuration Fields
-- **max_random**: Limits the maximum number of LoRAs to apply. Even if you select up to 10, you can choose to apply fewer.
-- **lora_x**: Specifies the LoRA file to use.
-- **min_str_x** and **max_str_x**: Defines the minimum and maximum strengths for each LoRA, allowing for a range of intensities.
-- **trigger_words_x**: The trigger words for the selected lora.
+Additionally, if the LoRA includes trigger words (via `lora-info`), these are extracted and returned for use in prompts.
 
+---
 
-## Installation
-You can use the [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager). Search for "santodan" or "santodan-nodes".
+### 🔧 Node Inputs
 
-Or you can install it manually:
+- `lora_name_X`: Up to 10 LoRAs to pick from (slots 1–10)
+- `min_strength_X`: Minimum strength when a LoRA is selected
+- `max_strength_X`: Maximum strength
+- `exclusive_mode`:
+  - **On** – choose 1 LoRA only
+  - **Off** – choose a random number from the list
+- `stride`: Number of runs before re-randomizing (not currently enforced)
+- `force_randomize_after_stride`: Avoids repeating same LoRA set (partially supported)
+- `refresh_loras`: Dummy input to trigger updates in the UI
+- `lora_stack`: (Optional) Input for chaining or merging with existing LoRA stack
 
-1. Open your terminal and navigate to your `ComfyUI/custom_nodes` directory.
-2. Clone the repository using:
-   ```
-   git clone https://github.com/Santodan/santodan-custom-nodes
-   ```
-3. Restart ComfyUI to apply the changes.  
+---
 
-### Uninstallation
-To remove the custom node:
-1. Delete the `santodan-nodes-comfyui` directory from `ComfyUI/custom_nodes`.
-2. Restart ComfyUI to apply the changes. 
+### 📤 Node Outputs
 
-### Updates
-To update the node:
+- `LORA_STACK`: A list of `(name, min_strength, max_strength)` tuples
+- `Trigger Words`: Comma-separated string of trigger words for selected LoRAs
+- `Help Text`: Describes the meaning of each setting for reference
 
-1. Navigate to `ComfyUI/custom_nodes/santodan-nodes-comfyui` in your terminal.
-2. Run the following command: `git pull`
-3. Restart ComfyUI to apply the changes.
+---
 
-# Credits
-Suzie1 / [Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes) - got the randomize idea from it
+### 📥 Installation
 
-jitcoder / [lora-info](https://github.com/jitcoder/lora-info) - the trigger_words extraction is all from this node, just implemented in mine
+#### Option 1: ComfyUI-Manager (recommended)
+
+1. Open ComfyUI
+2. Open ComfyUI-Manager
+3. Search for `Santodan` or `Randomize LoRAs`
+4. Click **Install**
+
+#### Option 2: Manual Install
+
+```bash
+cd ComfyUI/custom_nodes
+git clone https://github.com/Santodan/ComfyUI_santodan_custom_nodes
+```
+
+Then restart ComfyUI.
+
+---
+
+### 🔁 Updating
+
+```bash
+cd ComfyUI/custom_nodes/ComfyUI_santodan_custom_nodes
+git pull
+```
+
+Restart ComfyUI to apply the update.
+
+---
+
+### ❌ Uninstallation
+
+```bash
+cd ComfyUI/custom_nodes
+rm -rf ComfyUI_santodan_custom_nodes
+```
+
+Restart ComfyUI.
+
+---
+
+## 🧠 Credits
+
+- **[Suzie1 / Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes)**  
+  Provided the original randomization logic inspiration.
+
+- **[jitcoder / lora-info](https://github.com/jitcoder/lora-info)**  
+  Used for extracting trigger words from LoRA files.
+
+---
+
+## 📸 Screenshot / Demo
+
+_Add your own screenshot here to show how the node looks in ComfyUI._
