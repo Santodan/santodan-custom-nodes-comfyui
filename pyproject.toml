@@ -1,0 +1,15 @@
+[project]
+name = "santodan-custom-nodes-comfyui"
+description = "Randomizes selected LoRAs and strengths. Includes trigger word output and support for exclusive/random selection."
+version = "1.0.0"
+license = {file = "LICENSE"}
+
+[project.urls]
+Repository = "https://github.com/Santodan/santodan-custom-nodes-comfyui"
+#  Used by Comfy Registry https://registry.comfy.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "santodan-custom-nodes-comfyui"
+Icon = ""
+includes = []
