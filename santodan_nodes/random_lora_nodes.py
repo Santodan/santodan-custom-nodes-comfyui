@@ -117,6 +117,8 @@ class RandomLoRACustom:
 class RandomLoRAFolder:
     @classmethod
     def INPUT_TYPES(cls):
+        folders = ["None"] + cls.get_lora_subfolders()
+
         inputs = {
             "required": {
                 "exclusive_mode": (["Off", "On"],),
@@ -128,7 +130,7 @@ class RandomLoRAFolder:
         }
 
         for i in range(1, 11):
-            inputs["required"][f"folder_path_{i}"] = ("STRING", {"default": ""})
+            inputs["required"][f"folder_path_{i}"] = (folders,)
             inputs["required"][f"min_strength_{i}"] = (
                 "FLOAT", {"default": 0.6, "min": 0.0, "max": 10.0, "step": 0.01})
             inputs["required"][f"max_strength_{i}"] = (
@@ -140,13 +142,26 @@ class RandomLoRAFolder:
     RETURN_NAMES = ("lora_stack", "trigger_words", "help_text")
     FUNCTION = "random_lora_stacker"
     CATEGORY = "SantoDan/LoRA"
-
     always_dirty = True
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
         import uuid
         return str(uuid.uuid4())
+
+    @classmethod
+    def get_lora_subfolders(cls):
+        import os
+        lora_base_path = folder_paths.get_folder_paths("loras")[0]
+        subfolders = set()
+
+        for root, dirs, _ in os.walk(lora_base_path):
+            for d in dirs:
+                full_path = os.path.join(root, d)
+                rel_path = os.path.relpath(full_path, lora_base_path)
+                subfolders.add(rel_path.replace("\\", "/"))
+
+        return sorted(subfolders)
 
     def pick_random_lora_from_folder(self, relative_folder):
         import random
@@ -169,7 +184,7 @@ class RandomLoRAFolder:
         extra_trigger_words="",
         **kwargs
     ):
-        import random as py_random
+        import time, random as py_random
         py_random.seed(time.time_ns())
 
         folder_paths_input = [kwargs.get(f"folder_path_{i}") for i in range(1, 11)]
@@ -178,7 +193,7 @@ class RandomLoRAFolder:
 
         valid_entries = []
         for i, folder in enumerate(folder_paths_input):
-            if folder and folder.strip():
+            if folder and folder != "None":
                 picked = self.pick_random_lora_from_folder(folder.strip())
                 if picked:
                     valid_entries.append((picked, min_strengths[i], max_strengths[i]))
@@ -197,11 +212,14 @@ class RandomLoRAFolder:
 
         for name, min_s, max_s in selected_entries:
             strength = round(py_random.uniform(min_s, max_s), 3)
-            output_loras.append((os.path.basename(name), strength, strength))
+            output_loras.append((name, strength, strength))
 
-            _, trained_words, _, _ = get_lora_info(name)
-            if trained_words:
-                trigger_words_list.append(trained_words)
+            try:
+                _, trained_words, _, _ = get_lora_info(name)
+                if trained_words:
+                    trigger_words_list.append(trained_words)
+            except Exception:
+                pass  # skip trigger words if info isn't found
 
         if lora_stack:
             output_loras = list(lora_stack) + output_loras
@@ -217,8 +235,9 @@ class RandomLoRAFolder:
             " - Path to a subfolder inside your LoRA directory (e.g., 'flux/style').\n"
             " - Each folder should contain .safetensors or .pt files.\n\n"
             "exclusive_mode:\n"
-            " - On: Selects only one folder (random) and picks one LoRA from it.\n"
-            " - Off: Selects 1–N folders and picks one from each.\n"
+            " - On: Selects only one folder and one LoRA from it.\n"
+            " - Off: Picks 1–N folders and one LoRA from each.\n"
         )
 
         return (output_loras, trigger_words_string, help_text)
+
