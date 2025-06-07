@@ -1,4 +1,4 @@
-from .santodan_nodes.random_lora_node import *
+from .santodan_nodes.random_lora_nodes import *
 
 NODE_CLASS_MAPPINGS = {
     "RandomLoRACustom": RandomLoRACustom,
