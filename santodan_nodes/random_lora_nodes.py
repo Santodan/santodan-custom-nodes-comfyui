@@ -129,13 +129,14 @@ class RandomLoRAFolder:
             }
         }
 
+        # Start with just a few inputs, but make them all optional
         for i in range(1, 11):
-            inputs["required"][f"folder_path_{i}"] = (folders,)
-            inputs["required"][f"lora_count_{i}"] = (
+            inputs["optional"][f"folder_path_{i}"] = (folders,)
+            inputs["optional"][f"lora_count_{i}"] = (
                 "INT", {"default": 1, "min": 1, "max": 10, "step": 1, "display": "number"})
-            inputs["required"][f"min_strength_{i}"] = (
+            inputs["optional"][f"min_strength_{i}"] = (
                 "FLOAT", {"default": 0.6, "min": 0.0, "max": 10.0, "step": 0.01, "display": "number"})
-            inputs["required"][f"max_strength_{i}"] = (
+            inputs["optional"][f"max_strength_{i}"] = (
                 "FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01, "display": "number"})
 
         return inputs
@@ -144,7 +145,6 @@ class RandomLoRAFolder:
     RETURN_NAMES = ("lora_stack", "trigger_words", "help_text")
     FUNCTION = "random_lora_stacker"
     CATEGORY = "SantoDan/LoRA"
-    always_dirty = True
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
@@ -177,11 +177,9 @@ class RandomLoRAFolder:
         if not files:
             return []
 
-        # Ensure we don't try to pick more files than available
         actual_count = min(count, len(files))
         selected_files = random.sample(files, actual_count)
         
-        # Return tuples of (filename_only, full_relative_path) for trigger word extraction
         result = []
         for f in selected_files:
             filename_only = f
@@ -200,27 +198,25 @@ class RandomLoRAFolder:
         import time, random as py_random
         py_random.seed(time.time_ns())
 
-        folder_paths_input = [kwargs.get(f"folder_path_{i}") for i in range(1, 11)]
-        lora_counts = [kwargs.get(f"lora_count_{i}") for i in range(1, 11)]
-        min_strengths = [kwargs.get(f"min_strength_{i}") for i in range(1, 11)]
-        max_strengths = [kwargs.get(f"max_strength_{i}") for i in range(1, 11)]
-
+        # Process all folder inputs
         valid_entries = []
-        for i, folder in enumerate(folder_paths_input):
+        for i in range(1, 11):
+            folder = kwargs.get(f"folder_path_{i}")
             if folder and folder != "None":
-                count = lora_counts[i] if lora_counts[i] else 1
+                count = kwargs.get(f"lora_count_{i}", 1)
+                min_strength = kwargs.get(f"min_strength_{i}", 0.6)
+                max_strength = kwargs.get(f"max_strength_{i}", 1.0)
+                
                 picked_loras = self.pick_random_loras_from_folder(folder.strip(), count)
                 for filename_only, full_path in picked_loras:
-                    valid_entries.append((filename_only, full_path, min_strengths[i], max_strengths[i]))
+                    valid_entries.append((filename_only, full_path, min_strength, max_strength))
 
         if not valid_entries:
             return ([], "", "No valid folders or LoRA files found.")
 
         if exclusive_mode == "On":
-            # In exclusive mode, pick one random LoRA from all valid entries
             selected_entries = [py_random.choice(valid_entries)]
         else:
-            # In non-exclusive mode, use all valid entries
             selected_entries = valid_entries
 
         output_loras = []
@@ -228,16 +224,14 @@ class RandomLoRAFolder:
 
         for filename_only, full_path, min_s, max_s in selected_entries:
             strength = round(py_random.uniform(min_s, max_s), 3)
-            # Use filename_only for the LoRA stack output
             output_loras.append((filename_only, strength, strength))
 
             try:
-                # Use full_path for trigger word extraction
                 _, trained_words, _, _ = get_lora_info(full_path)
                 if trained_words:
                     trigger_words_list.append(trained_words)
             except Exception:
-                pass  # skip trigger words if info isn't found
+                pass
 
         if lora_stack:
             output_loras = list(lora_stack) + output_loras
@@ -249,15 +243,16 @@ class RandomLoRAFolder:
         trigger_words_string = ", ".join(all_trigger_words)
 
         help_text = (
+            "Usage:\n"
+            " - Connect inputs to see available folder options.\n"
+            " - Only folders with valid paths (not 'None') will be processed.\n\n"
             "folder_path_x:\n"
-            " - Path to a subfolder inside your LoRA directory (e.g., 'flux/style').\n"
-            " - Each folder should contain .safetensors or .pt files.\n\n"
+            " - Path to a subfolder inside your LoRA directory.\n\n"
             "lora_count_x:\n"
-            " - Number of LoRAs to randomly select from each folder (1-10).\n"
-            " - If folder has fewer LoRAs than specified, all available will be used.\n\n"
+            " - Number of LoRAs to randomly select from each folder (1-10).\n\n"
             "exclusive_mode:\n"
             " - On: Selects only one LoRA randomly from all collected LoRAs.\n"
-            " - Off: Uses all LoRAs from all specified folders (respecting count settings).\n"
+            " - Off: Uses all LoRAs from all specified folders.\n"
         )
 
         return (output_loras, trigger_words_string, help_text)
