@@ -39,12 +39,26 @@ class RandomLoRACustom:
     FUNCTION = "random_lora_stacker"
     CATEGORY = "SantoDan/LoRA"
 
-    always_dirty = True
+    # Remove this line to stop constant refreshing
+    # always_dirty = True
+
+    # Store last refresh state
+    _last_refresh_state = {}
 
     @classmethod
-    def IS_CHANGED(cls, **kwargs):
-        import uuid
-        return str(uuid.uuid4())
+    def IS_CHANGED(cls, refresh_loras=False, **kwargs):
+        # Create a unique key for this node instance
+        node_key = str(kwargs)
+        
+        # Only refresh if refresh_loras is True OR if this is the first time
+        if refresh_loras or node_key not in cls._last_refresh_state:
+            import uuid
+            new_id = str(uuid.uuid4())
+            cls._last_refresh_state[node_key] = new_id
+            return new_id
+        
+        # Return the cached ID if no refresh is needed
+        return cls._last_refresh_state[node_key]
 
     def random_lora_stacker(
         self,
@@ -57,14 +71,20 @@ class RandomLoRACustom:
         **kwargs
     ):
         import random as py_random
-        py_random.seed(time.time_ns())
+        
+        # Use a more deterministic seed approach
+        if refresh_loras:
+            py_random.seed(time.time_ns())
+        else:
+            # Use a seed based on parameters for consistency
+            seed_string = f"{exclusive_mode}_{stride}_{force_randomize_after_stride}"
+            py_random.seed(hash(seed_string) % (2**32))
 
         lora_names = [kwargs.get(f"lora_name_{i}") for i in range(1, 11)]
         min_strengths = [kwargs.get(f"min_strength_{i}") for i in range(1, 11)]
         max_strengths = [kwargs.get(f"max_strength_{i}") for i in range(1, 11)]
 
         active_loras = [name for name in lora_names if name and name != "None"]
-        #print(f"Active LoRAs: {active_loras}")
 
         if not active_loras:
             return ([], "", "No active LoRAs found.")
@@ -74,8 +94,6 @@ class RandomLoRACustom:
         else:
             n = py_random.choice(range(1, len(active_loras) + 1))
             used_loras = set(py_random.sample(active_loras, n))
-
-        #print(f"Used LoRAs: {used_loras}")
 
         output_loras = []
         trigger_words_list = []
@@ -102,6 +120,9 @@ class RandomLoRACustom:
         trigger_words_string = ", ".join(all_trigger_words)
 
         help_text = (
+            "refresh_loras:\n"
+            " - True: Forces new randomization with time-based seed.\n"
+            " - False: Uses consistent seed based on parameters.\n\n"
             "exclusive_mode:\n"
             " - On: Selects only one random LoRA from the active list.\n"
             " - Off: Selects a random number of LoRAs (between 1 and total active LoRAs).\n\n"
@@ -112,8 +133,7 @@ class RandomLoRACustom:
         )
 
         return (output_loras, trigger_words_string, help_text)
-
-
+        
 class RandomLoRAFolder:
     @classmethod
     def INPUT_TYPES(cls):
@@ -122,6 +142,7 @@ class RandomLoRAFolder:
         inputs = {
             "required": {
                 "exclusive_mode": (["Off", "On"],),
+                "refresh_selection": ("BOOLEAN", {"default": False}),  # Add refresh control
             },
             "optional": {
                 "lora_stack": ("LORA_STACK",),
@@ -146,10 +167,25 @@ class RandomLoRAFolder:
     FUNCTION = "random_lora_stacker"
     CATEGORY = "SantoDan/LoRA"
 
+    # Store last refresh state
+    _last_refresh_state = {}
+
     @classmethod
-    def IS_CHANGED(cls, **kwargs):
-        import uuid
-        return str(uuid.uuid4())
+    def IS_CHANGED(cls, refresh_selection=False, **kwargs):
+        # Create a unique key for this node instance based on parameters
+        # Exclude refresh_selection from the key since it's the trigger
+        key_params = {k: v for k, v in kwargs.items() if k != 'refresh_selection'}
+        node_key = str(sorted(key_params.items()))
+        
+        # Only refresh if refresh_selection is True OR if this is the first time
+        if refresh_selection or node_key not in cls._last_refresh_state:
+            import uuid
+            new_id = str(uuid.uuid4())
+            cls._last_refresh_state[node_key] = new_id
+            return new_id
+        
+        # Return the cached ID if no refresh is needed
+        return cls._last_refresh_state[node_key]
 
     @classmethod
     def get_lora_subfolders(cls):
@@ -191,12 +227,23 @@ class RandomLoRAFolder:
     def random_lora_stacker(
         self,
         exclusive_mode,
+        refresh_selection=False,
         lora_stack=None,
         extra_trigger_words="",
         **kwargs
     ):
         import time, random as py_random
-        py_random.seed(time.time_ns())
+        
+        # Use different seeding strategy based on refresh_selection
+        if refresh_selection:
+            py_random.seed(time.time_ns())
+        else:
+            # Use a seed based on parameters for consistency
+            seed_string = f"{exclusive_mode}_" + "_".join([
+                f"{kwargs.get(f'folder_path_{i}', '')}_{kwargs.get(f'lora_count_{i}', 1)}"
+                for i in range(1, 11)
+            ])
+            py_random.seed(hash(seed_string) % (2**32))
 
         # Process all folder inputs
         valid_entries = []
@@ -224,7 +271,7 @@ class RandomLoRAFolder:
 
         for filename_only, full_path, min_s, max_s in selected_entries:
             strength = round(py_random.uniform(min_s, max_s), 3)
-            output_loras.append((filename_only, strength, strength))
+            output_loras.append((full_path, strength, strength))
 
             try:
                 _, trained_words, _, _ = get_lora_info(full_path)
@@ -245,7 +292,11 @@ class RandomLoRAFolder:
         help_text = (
             "Usage:\n"
             " - Connect inputs to see available folder options.\n"
-            " - Only folders with valid paths (not 'None') will be processed.\n\n"
+            " - Only folders with valid paths (not 'None') will be processed.\n"
+            " - Set 'refresh_selection' to True to get new random selections.\n\n"
+            "refresh_selection:\n"
+            " - True: Forces new randomization with time-based seed.\n"
+            " - False: Uses consistent seed based on parameters.\n\n"
             "folder_path_x:\n"
             " - Path to a subfolder inside your LoRA directory.\n\n"
             "lora_count_x:\n"
