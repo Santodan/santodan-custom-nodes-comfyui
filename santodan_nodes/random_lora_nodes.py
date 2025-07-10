@@ -135,6 +135,9 @@ class RandomLoRACustom:
         return (output_loras, trigger_words_string, help_text)
         
 class RandomLoRAFolder:
+    # Class-level cache for LoRA info to avoid regenerating files
+    _lora_info_cache = {}
+    
     @classmethod
     def INPUT_TYPES(cls):
         folders = ["None"] + cls.get_lora_subfolders()
@@ -142,7 +145,7 @@ class RandomLoRAFolder:
         inputs = {
             "required": {
                 "exclusive_mode": (["Off", "On"],),
-                "refresh_selection": ("BOOLEAN", {"default": False}),  # Add refresh control
+                "force_refresh_cache": ("BOOLEAN", {"default": False}),  # Only for cache refresh
             },
             "optional": {
                 "lora_stack": ("LORA_STACK",),
@@ -150,7 +153,6 @@ class RandomLoRAFolder:
             }
         }
 
-        # Start with just a few inputs, but make them all optional
         for i in range(1, 11):
             inputs["optional"][f"folder_path_{i}"] = (folders,)
             inputs["optional"][f"lora_count_{i}"] = (
@@ -167,25 +169,16 @@ class RandomLoRAFolder:
     FUNCTION = "random_lora_stacker"
     CATEGORY = "SantoDan/LoRA"
 
-    # Store last refresh state
-    _last_refresh_state = {}
-
     @classmethod
-    def IS_CHANGED(cls, refresh_selection=False, **kwargs):
-        # Create a unique key for this node instance based on parameters
-        # Exclude refresh_selection from the key since it's the trigger
-        key_params = {k: v for k, v in kwargs.items() if k != 'refresh_selection'}
-        node_key = str(sorted(key_params.items()))
+    def IS_CHANGED(cls, force_refresh_cache=False, **kwargs):
+        # Always randomize selection, but handle cache refresh separately
+        if force_refresh_cache:
+            # Clear the cache when forced refresh is requested
+            cls._lora_info_cache.clear()
         
-        # Only refresh if refresh_selection is True OR if this is the first time
-        if refresh_selection or node_key not in cls._last_refresh_state:
-            import uuid
-            new_id = str(uuid.uuid4())
-            cls._last_refresh_state[node_key] = new_id
-            return new_id
-        
-        # Return the cached ID if no refresh is needed
-        return cls._last_refresh_state[node_key]
+        # Always return a new UUID for randomization, but cache will handle efficiency
+        import uuid
+        return str(uuid.uuid4())
 
     @classmethod
     def get_lora_subfolders(cls):
@@ -200,6 +193,18 @@ class RandomLoRAFolder:
                 subfolders.add(rel_path.replace("\\", "/"))
 
         return sorted(subfolders)
+
+    @classmethod
+    def get_cached_lora_info(cls, lora_path):
+        """Get LoRA info with caching to avoid regenerating files"""
+        if lora_path not in cls._lora_info_cache:
+            try:
+                cls._lora_info_cache[lora_path] = get_lora_info(lora_path)
+            except Exception as e:
+                print(f"Error getting LoRA info for {lora_path}: {e}")
+                cls._lora_info_cache[lora_path] = (None, None, None, None)
+        
+        return cls._lora_info_cache[lora_path]
 
     def pick_random_loras_from_folder(self, relative_folder, count=1):
         import random
@@ -227,23 +232,15 @@ class RandomLoRAFolder:
     def random_lora_stacker(
         self,
         exclusive_mode,
-        refresh_selection=False,
+        force_refresh_cache=False,
         lora_stack=None,
         extra_trigger_words="",
         **kwargs
     ):
         import time, random as py_random
         
-        # Use different seeding strategy based on refresh_selection
-        if refresh_selection:
-            py_random.seed(time.time_ns())
-        else:
-            # Use a seed based on parameters for consistency
-            seed_string = f"{exclusive_mode}_" + "_".join([
-                f"{kwargs.get(f'folder_path_{i}', '')}_{kwargs.get(f'lora_count_{i}', 1)}"
-                for i in range(1, 11)
-            ])
-            py_random.seed(hash(seed_string) % (2**32))
+        # Always use time-based seed for true randomization
+        py_random.seed(time.time_ns())
 
         # Process all folder inputs
         valid_entries = []
@@ -273,12 +270,10 @@ class RandomLoRAFolder:
             strength = round(py_random.uniform(min_s, max_s), 3)
             output_loras.append((full_path, strength, strength))
 
-            try:
-                _, trained_words, _, _ = get_lora_info(full_path)
-                if trained_words:
-                    trigger_words_list.append(trained_words)
-            except Exception:
-                pass
+            # Use cached LoRA info to avoid regenerating files
+            _, trained_words, _, _ = self.get_cached_lora_info(full_path)
+            if trained_words:
+                trigger_words_list.append(trained_words)
 
         if lora_stack:
             output_loras = list(lora_stack) + output_loras
@@ -289,14 +284,16 @@ class RandomLoRAFolder:
 
         trigger_words_string = ", ".join(all_trigger_words)
 
+        cache_size = len(self._lora_info_cache)
         help_text = (
             "Usage:\n"
             " - Connect inputs to see available folder options.\n"
             " - Only folders with valid paths (not 'None') will be processed.\n"
-            " - Set 'refresh_selection' to True to get new random selections.\n\n"
-            "refresh_selection:\n"
-            " - True: Forces new randomization with time-based seed.\n"
-            " - False: Uses consistent seed based on parameters.\n\n"
+            " - LoRA selection randomizes every execution.\n\n"
+            "force_refresh_cache:\n"
+            " - True: Clears LoRA info cache and regenerates files.\n"
+            " - False: Uses cached LoRA info for better performance.\n\n"
+            f"Current cache size: {cache_size} LoRAs\n\n"
             "folder_path_x:\n"
             " - Path to a subfolder inside your LoRA directory.\n\n"
             "lora_count_x:\n"
