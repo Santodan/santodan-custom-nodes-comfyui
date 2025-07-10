@@ -49,6 +49,12 @@ This helps avoid performance issues with large LoRA libraries.
 
 ---
 
+## 📸 Screenshot / Demo
+
+![preview](preview/image1.png)
+
+---
+
 ### 📥 Installation
 
 #### Option 1: ComfyUI-Manager (recommended)
@@ -104,10 +110,3 @@ Restart ComfyUI.
 
 - **Claude.ai**  
   Used to create the whole code as I only have some basic programming knowledge
-  
----
-
-## 📸 Screenshot / Demo
-
-![preview](preview/image1.png)
-
