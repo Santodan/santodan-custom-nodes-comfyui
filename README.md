@@ -43,10 +43,8 @@ I'll describe only the inputs that are straight forwards here:
 
 ### 📤 Cache Behavior
 
-LoRA metadata (like trigger words) is cached to speed up repeat runs.
-
-Use force_refresh_cache: True to clear and reload cache.
-
+LoRA metadata (like trigger words) is cached to speed up repeat runs.  
+Use `force_refresh_cache`: True to clear and reload cache.  
 This helps avoid performance issues with large LoRA libraries.
 
 ---
@@ -101,10 +99,10 @@ Restart ComfyUI.
 - **[jitcoder / lora-info](https://github.com/jitcoder/lora-info)**  
   Used for extracting trigger words from LoRA files.
 
-- **ChatGPT**
+- **ChatGPT**  
   Used to create the whole code as I only have some basic programming knowledge
 
-- **Claude.ai**
+- **Claude.ai**  
   Used to create the whole code as I only have some basic programming knowledge
   
 ---
