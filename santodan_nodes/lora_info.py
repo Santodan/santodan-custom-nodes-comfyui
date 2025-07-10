@@ -62,47 +62,82 @@ def get_lora_info(lora_name):
     trainedWords = loraInfo.get('trainedWords', None)
     baseModel = loraInfo.get('baseModel', None)
 
-    if output is None or baseModel is None:
+    # Check if we have valid cached data (not None and not empty string)
+    if not (output and baseModel):  # This checks for None, empty string, or falsy values
+        print(f"Fetching LoRA info for: {lora_name}")  # Debug log
+        
         output = ""
         lora_path = folder_paths.get_full_path("loras", lora_name)
-        LORAsha256 = calculate_sha256(lora_path)
-        model_info = get_model_version_info(LORAsha256)
-        if model_info.get("trainedWords", None) is None:
-            trainedWords = ""
-        else:
-            trainedWords = ",".join(model_info.get("trainedWords"))
-        baseModel = model_info.get("baseModel", "")
-        images = model_info.get('images')
-        examplePrompt = None
-        modelID = model_info.get("modelId")
         
-        if modelID:
-            output += f"URL: https://civitai.com/models/{modelID}\n"
-        if trainedWords:
-            output += "Triggers: " + trainedWords
-            output += "\n"
-        
-        if baseModel:
-            output += f"Base Model: {baseModel}\n"
-        if images:
-            output += "\nExamples:\n"
-            for image in images:
-                output += f"\nOutput: {image.get('url')}\n"
-                meta = image.get("meta")
-                if meta:
-                    for key, value in meta.items():
-                        if examplePrompt is None and key == "prompt":
-                            examplePrompt = value
-                        output += f"{key}: {value}\n"
-                output += '\n'
+        try:
+            LORAsha256 = calculate_sha256(lora_path)
+            model_info = get_model_version_info(LORAsha256)
+            
+            if model_info.get("trainedWords", None) is None:
+                trainedWords = ""
+            else:
+                trainedWords = ",".join(model_info.get("trainedWords"))
+            
+            baseModel = model_info.get("baseModel", "")
+            images = model_info.get('images')
+            examplePrompt = None
+            modelID = model_info.get("modelId")
+            
+            if modelID:
+                output += f"URL: https://civitai.com/models/{modelID}\n"
+            if trainedWords:
+                output += "Triggers: " + trainedWords
+                output += "\n"
+            
+            if baseModel:
+                output += f"Base Model: {baseModel}\n"
+            if images:
+                output += "\nExamples:\n"
+                for image in images:
+                    output += f"\nOutput: {image.get('url')}\n"
+                    meta = image.get("meta")
+                    if meta:
+                        for key, value in meta.items():
+                            if examplePrompt is None and key == "prompt":
+                                examplePrompt = value
+                            output += f"{key}: {value}\n"
+                    output += '\n'
 
-        db[lora_name] = {
-            "output": output,
-            "trainedWords": trainedWords,
-            "examplePrompt": examplePrompt,
-            "baseModel": baseModel
-            }
-        save_dict_to_json(db, db_path)
+            # Only save if we actually got some data
+            if output or baseModel or trainedWords:
+                db[lora_name] = {
+                    "output": output,
+                    "trainedWords": trainedWords,
+                    "examplePrompt": examplePrompt,
+                    "baseModel": baseModel,
+                    "cached": True  # Add a flag to indicate this is cached
+                }
+                save_dict_to_json(db, db_path)
+            else:
+                # If no data found, still cache it to avoid repeated API calls
+                db[lora_name] = {
+                    "output": "No information found",
+                    "trainedWords": "",
+                    "examplePrompt": "",
+                    "baseModel": "Unknown",
+                    "cached": True
+                }
+                save_dict_to_json(db, db_path)
+                
+        except Exception as e:
+            print(f"Error processing LoRA {lora_name}: {e}")
+            # Cache the error state to avoid repeated failures
+            if lora_name not in db:
+                db[lora_name] = {
+                    "output": f"Error processing: {str(e)}",
+                    "trainedWords": "",
+                    "examplePrompt": "",
+                    "baseModel": "Error",
+                    "cached": True
+                }
+                save_dict_to_json(db, db_path)
+    else:
+        print(f"Using cached LoRA info for: {lora_name}")  # Debug log
     
     return (output, trainedWords, examplePrompt, baseModel)
 
@@ -137,5 +172,3 @@ class LoraInfo:
     def lora_info(self, lora_name):
         (output, triggerWords, examplePrompt, baseModel) = get_lora_info(lora_name)
         return {"ui": {"text": (output,), "model": (baseModel,)}, "result": (lora_name, triggerWords, examplePrompt)}
-
-
