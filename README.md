@@ -109,5 +109,5 @@ Restart ComfyUI.
 
 ## 📸 Screenshot / Demo
 
-![preview](preview/image.png)
+![preview](preview/image1.png)
 
