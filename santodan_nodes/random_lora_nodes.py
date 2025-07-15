@@ -17,7 +17,7 @@ class RandomLoRACustom:
                 "refresh_loras": ("BOOLEAN", {"default": False}),
                 "exclusive_mode": (["Off", "On"],),
                 "stride": ("INT", {"default": 1, "min": 1, "max": 1000}),
-                "force_randomize_after_stride": (["Off", "On"],),
+                "lora_count": ("INT", {"default": 0, "min": 0, "max": 10}),
             },
             "optional": {
                 "lora_stack": ("LORA_STACK",),
@@ -64,7 +64,7 @@ class RandomLoRACustom:
         self,
         exclusive_mode,
         stride,
-        force_randomize_after_stride,
+        lora_count,
         refresh_loras=False,
         lora_stack=None,
         extra_trigger_words="",
@@ -77,7 +77,7 @@ class RandomLoRACustom:
             py_random.seed(time.time_ns())
         else:
             # Use a seed based on parameters for consistency
-            seed_string = f"{exclusive_mode}_{stride}_{force_randomize_after_stride}"
+            seed_string = f"{exclusive_mode}_{stride}_{lora_count}"
             py_random.seed(hash(seed_string) % (2**32))
 
         lora_names = [kwargs.get(f"lora_name_{i}") for i in range(1, 11)]
@@ -89,10 +89,16 @@ class RandomLoRACustom:
         if not active_loras:
             return ([], "", "No active LoRAs found.")
 
+        # Determine how many LoRAs to use
         if exclusive_mode == "On":
             used_loras = {py_random.choice(active_loras)}
         else:
-            n = py_random.choice(range(1, len(active_loras) + 1))
+            if lora_count == 0:
+                # Random number of LoRAs (original behavior)
+                n = py_random.choice(range(1, len(active_loras) + 1))
+            else:
+                # User-specified number of LoRAs
+                n = min(lora_count, len(active_loras))
             used_loras = set(py_random.sample(active_loras, n))
 
         output_loras = []
@@ -125,11 +131,13 @@ class RandomLoRACustom:
             " - False: Uses consistent seed based on parameters.\n\n"
             "exclusive_mode:\n"
             " - On: Selects only one random LoRA from the active list.\n"
-            " - Off: Selects a random number of LoRAs (between 1 and total active LoRAs).\n\n"
+            " - Off: Uses lora_count to determine how many LoRAs to select.\n\n"
             "stride:\n"
             " - Currently ignored.\n\n"
-            "force_randomize_after_stride:\n"
-            " - Currently ignored.\n"
+            "lora_count:\n"
+            " - 0: Selects a random number of LoRAs (between 1 and total active LoRAs).\n"
+            " - >0: Selects exactly this number of LoRAs (or all available if less than count).\n"
+            " - Note: Ignored when exclusive_mode is On.\n"
         )
 
         return (output_loras, trigger_words_string, help_text)
@@ -306,3 +314,107 @@ class RandomLoRAFolder:
         )
 
         return (output_loras, trigger_words_string, help_text)
+
+
+class LoRACachePreloader:
+    """
+    A simple node that pre-loads LoRA information for all LoRAs in all folders
+    to populate the cache used by RandomLoRAFolder for faster performance.
+    """
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        folders = ["All folders"] + RandomLoRAFolder.get_lora_subfolders()
+        
+        return {
+            "required": {
+                "preload_cache": ("BOOLEAN", {"default": False}),
+                "folder_path": (folders, {"default": "All folders"}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "INT")
+    RETURN_NAMES = ("status", "cached_count")
+    FUNCTION = "preload_lora_cache"
+    CATEGORY = "SantoDan/LoRA"
+
+    @classmethod
+    def IS_CHANGED(cls, preload_cache=False, **kwargs):
+        # Only trigger when the user sets preload_cache to True
+        if preload_cache:
+            import uuid
+            return str(uuid.uuid4())
+        return False
+
+    def get_all_lora_files(self, folder_path="All folders"):
+        """Get all LoRA files from all folders or a specific folder"""
+        import os
+        
+        lora_base_path = folder_paths.get_folder_paths("loras")[0]
+        lora_files = []
+        
+        if folder_path == "All folders":
+            # Walk through all folders and subfolders
+            for root, dirs, files in os.walk(lora_base_path):
+                for file in files:
+                    if file.endswith((".safetensors", ".pt")):
+                        full_path = os.path.join(root, file)
+                        relative_path = os.path.relpath(full_path, lora_base_path)
+                        lora_files.append(relative_path.replace("\\", "/"))
+        else:
+            # Process only the specific folder
+            target_folder = os.path.join(lora_base_path, folder_path)
+            if os.path.isdir(target_folder):
+                for root, dirs, files in os.walk(target_folder):
+                    for file in files:
+                        if file.endswith((".safetensors", ".pt")):
+                            full_path = os.path.join(root, file)
+                            relative_path = os.path.relpath(full_path, lora_base_path)
+                            lora_files.append(relative_path.replace("\\", "/"))
+        
+        return lora_files
+
+    def preload_lora_cache(self, preload_cache=False, folder_path="All folders"):
+        if not preload_cache:
+            current_cache_size = len(RandomLoRAFolder._lora_info_cache)
+            return (
+                f"Ready to preload. Current cache: {current_cache_size} LoRAs",
+                current_cache_size
+            )
+        
+        import time
+        start_time = time.time()
+        
+        # Get all LoRA files
+        lora_files = self.get_all_lora_files(folder_path)
+        
+        if not lora_files:
+            return (f"No LoRA files found in {folder_path}", 0)
+        
+        total_files = len(lora_files)
+        processed_count = 0
+        error_count = 0
+        
+        print(f"Starting preload of {total_files} LoRA files from {folder_path}...")
+        
+        for i, lora_path in enumerate(lora_files):
+            try:
+                # Use the same caching method as RandomLoRAFolder
+                RandomLoRAFolder.get_cached_lora_info(lora_path)
+                processed_count += 1
+                
+                # Log progress every 50 files
+                if (i + 1) % 50 == 0:
+                    print(f"Processed {i + 1}/{total_files} files...")
+                    
+            except Exception as e:
+                error_count += 1
+                print(f"Error processing {lora_path}: {e}")
+        
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        final_cache_size = len(RandomLoRAFolder._lora_info_cache)
+        
+        status = f"Preloaded {processed_count}/{total_files} LoRAs from {folder_path} in {elapsed_time:.1f}s (errors: {error_count})"
+        
+        return (status, final_cache_size)
