@@ -183,15 +183,17 @@ class RandomLoRAFolder:
     @classmethod
     def get_lora_subfolders(cls):
         import os
+        
+        # Get the first LoRA path from ComfyUI's configuration
         lora_base_path = folder_paths.get_folder_paths("loras")[0]
+        
         subfolders = set()
-
-        for root, dirs, _ in os.walk(lora_base_path):
+        for root, dirs, files in os.walk(lora_base_path):
             for d in dirs:
                 full_path = os.path.join(root, d)
                 rel_path = os.path.relpath(full_path, lora_base_path)
                 subfolders.add(rel_path.replace("\\", "/"))
-
+        
         return sorted(subfolders)
 
     @classmethod
