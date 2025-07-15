@@ -12,21 +12,26 @@ The **Randomize LoRAs** node lets you experiment by randomly selecting LoRAs fro
 
 ## 🎲 Random LoRA Folder Selector
 
-The **Random LoRA Folder Selector** node lets you experiment by randomly selecting LoRAs from a doler and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed and how many to be selected by folder.
-
+The **Random LoRA Folder Selector** node lets you experiment by randomly selecting LoRAs from a doler and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed and how many to be selected by folder.  
 Additionally, if the LoRA includes trigger words (via `lora-info`), these are extracted and returned for use in prompts.
+
+## 🎲 LoRA Cache Preloader
+
+This is a node to have the information for the loras preloaded into the `db.json`  
+You can select the folder that you want to run it.  
+This way you don't need to wait for the information to be gathered when running the other two nodes
 
 ---
 
 ### 🔧 Node Inputs
 
-I'll describe only the inputs that are straight forwards here:
+I'll describe only the inputs that aren't straight forwards here:
+- `refresh_loras`: To force a refresh of LoRAs everytime
 - `exclusive_mode`:
   - **On** – choose 1 LoRA only
   - **Off** – choose a random number from the list
 - `stride`: Number of runs before re-randomizing (not currently enforced)
-- `force_randomize_after_stride`: Avoids repeating same LoRA set (partially supported)
-- `refresh_loras`: Dummy input to trigger updates in the UI
+- `lora_count`: the number of LoRAs to be extracted from the list ( if 0 it will be a random value / `exclusive_mode` will overcome this is set to **On** )
 - `lora_stack`: (Optional) Input for chaining or merging with existing LoRA stack
 - `extra_trigger_words`: (Optional) Additional text to append from previous node
 - `force_refresh_cache`: Set to True to clear and regenerate cached LoRA metadata
