@@ -38,7 +38,6 @@ class RandomLoRACustom:
     RETURN_NAMES = ("lora_stack", "trigger_words", "help_text")
     FUNCTION = "random_lora_stacker"
     CATEGORY = "SantoDan/LoRA"
-
     _last_refresh_state = {}
 
     @classmethod
@@ -48,31 +47,27 @@ class RandomLoRACustom:
             import uuid
             new_id = str(uuid.uuid4())
             cls._last_refresh_state[node_key] = new_id
-            return new_id
         return cls._last_refresh_state[node_key]
 
     def random_lora_stacker(
-        self,
-        exclusive_mode,
-        stride,
-        lora_count,
-        refresh_loras=False,
-        lora_stack=None,
-        extra_trigger_words="",
-        **kwargs
+        self, exclusive_mode, stride, lora_count,
+        refresh_loras=False, lora_stack=None,
+        extra_trigger_words="", **kwargs
     ):
         import random as py_random
+        import time
 
+        # Seed handling
         if refresh_loras:
             py_random.seed(time.time_ns())
         else:
             seed_string = f"{exclusive_mode}_{stride}_{lora_count}"
             py_random.seed(hash(seed_string) % (2**32))
 
+        # Collect inputs
         lora_names = [kwargs.get(f"lora_name_{i}") for i in range(1, 11)]
         min_strengths = [kwargs.get(f"min_strength_{i}") for i in range(1, 11)]
         max_strengths = [kwargs.get(f"max_strength_{i}") for i in range(1, 11)]
-
         active_loras = [name for name in lora_names if name and name != "None"]
 
         if not active_loras:
@@ -80,15 +75,17 @@ class RandomLoRACustom:
                 return (list(lora_stack), "", "No active LoRAs found. Passing through input stack.")
             return ([], "", "No active LoRAs found.")
 
+        # Determine which LoRAs to use
         if exclusive_mode == "On":
             used_loras = {py_random.choice(active_loras)}
         else:
             if lora_count == 0:
                 n = py_random.choice(range(1, len(active_loras) + 1))
             else:
-                n = min(lora_count, len(active_loras))
+                n = min(lora_count, len(active_loras))  # Clamp to number of available LoRAs
             used_loras = set(py_random.sample(active_loras, n))
 
+        # Build output list
         output_loras = []
         trigger_words_list = []
 
@@ -102,15 +99,21 @@ class RandomLoRACustom:
                 if trainedWords:
                     trigger_words_list.append(trainedWords)
 
+        # Normalize lora_stack to prevent unpacking errors
         if lora_stack:
-            output_loras = list(lora_stack) + output_loras
+            normalized_stack = [
+                tup[:3] if len(tup) >= 3 else (tup[0], tup[1], tup[1])
+                for tup in lora_stack
+            ]
+            output_loras = normalized_stack + output_loras
 
+        # Prepare trigger words
         all_trigger_words = list(filter(None, trigger_words_list))
         if extra_trigger_words:
             all_trigger_words.append(extra_trigger_words)
-
         trigger_words_string = ", ".join(all_trigger_words)
 
+        # Help text
         help_text = (
             "refresh_loras:\n"
             " - True: Forces new randomization with time-based seed.\n"
@@ -128,9 +131,7 @@ class RandomLoRACustom:
         return (output_loras, trigger_words_string, help_text)
 
 
-import os
-import folder_paths
-from .lora_info import get_lora_info
+
 
 class RandomLoRAFolder:
     _lora_info_cache = {}
