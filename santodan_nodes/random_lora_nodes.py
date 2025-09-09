@@ -130,6 +130,7 @@ class RandomLoRACustom:
 
 class RandomLoRAFolder:
     _lora_info_cache = {}
+    _last_refresh_state = {}
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -137,6 +138,7 @@ class RandomLoRAFolder:
         inputs = {
             "required": {
                 "exclusive_mode": (["Off", "On"],),
+                "refresh_loras": ("BOOLEAN", {"default": False}),
                 "force_refresh_cache": ("BOOLEAN", {"default": False}),
             },
             "optional": {
@@ -145,14 +147,14 @@ class RandomLoRAFolder:
             }
         }
 
-        for i in range(1, 10 + 1):
+        for i in range(1, 11):
             inputs["optional"][f"folder_path_{i}"] = (folders,)
             inputs["optional"][f"lora_count_{i}"] = (
-                "INT", {"default": 1, "min": 1, "max": 10, "step": 1, "display": "number"})
+                "INT", {"default": 1, "min": 1, "max": 10, "step": 1})
             inputs["optional"][f"min_strength_{i}"] = (
-                "FLOAT", {"default": 0.6, "min": 0.0, "max": 10.0, "step": 0.01, "display": "number"})
+                "FLOAT", {"default": 0.6, "min": 0.0, "max": 10.0, "step": 0.01})
             inputs["optional"][f"max_strength_{i}"] = (
-                "FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01, "display": "number"})
+                "FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01})
 
         return inputs
 
@@ -162,11 +164,17 @@ class RandomLoRAFolder:
     CATEGORY = "SantoDan/LoRA"
 
     @classmethod
-    def IS_CHANGED(cls, force_refresh_cache=False, **kwargs):
+    def IS_CHANGED(cls, refresh_loras=False, force_refresh_cache=False, **kwargs):
         if force_refresh_cache:
             cls._lora_info_cache.clear()
+
+        node_key = str(kwargs)
         import uuid
-        return str(uuid.uuid4())
+        if refresh_loras or node_key not in cls._last_refresh_state:
+            new_id = str(uuid.uuid4())
+            cls._last_refresh_state[node_key] = new_id
+            return new_id
+        return cls._last_refresh_state[node_key]
 
     @classmethod
     def get_lora_subfolders(cls):
@@ -189,8 +197,8 @@ class RandomLoRAFolder:
                 cls._lora_info_cache[lora_path] = (None, None, None, None)
         return cls._lora_info_cache[lora_path]
 
-    def pick_random_loras_from_folder(self, relative_folder, count=1):
-        import random
+    def pick_random_loras_from_folder(self, relative_folder, count=1, rng=None):
+        import os, random
         lora_base_path = folder_paths.get_folder_paths("loras")[0]
         folder = os.path.join(lora_base_path, relative_folder)
         if not os.path.isdir(folder):
@@ -199,19 +207,27 @@ class RandomLoRAFolder:
         if not files:
             return []
         actual_count = min(count, len(files))
-        selected_files = random.sample(files, actual_count)
+        rng = rng or random
+        selected_files = rng.sample(files, actual_count)
         return [os.path.join(relative_folder, f).replace("\\", "/") for f in selected_files]
 
     def random_lora_stacker(
         self,
         exclusive_mode,
+        refresh_loras=False,
         force_refresh_cache=False,
         lora_stack=None,
         extra_trigger_words="",
         **kwargs
     ):
         import random as py_random
-        py_random.seed(time.time_ns())
+
+        # Seed RNG: deterministic if refresh_loras=False, random if True
+        if refresh_loras:
+            py_random.seed(time.time_ns())
+        else:
+            seed_string = str(sorted(kwargs.items()))
+            py_random.seed(hash(seed_string) % (2**32))
 
         valid_entries = []
         for i in range(1, 11):
@@ -220,21 +236,15 @@ class RandomLoRAFolder:
                 count = kwargs.get(f"lora_count_{i}", 1)
                 min_strength = kwargs.get(f"min_strength_{i}", 0.6)
                 max_strength = kwargs.get(f"max_strength_{i}", 1.0)
-                picked_loras = self.pick_random_loras_from_folder(folder.strip(), count)
+                picked_loras = self.pick_random_loras_from_folder(folder.strip(), count, rng=py_random)
                 for full_path in picked_loras:
                     valid_entries.append((full_path, min_strength, max_strength))
 
         if not valid_entries:
             if lora_stack:
-                all_trigger_words = []
-                if extra_trigger_words:
-                    all_trigger_words.append(extra_trigger_words)
-                return (
-                    list(lora_stack),
-                    ", ".join(all_trigger_words),
-                    "No valid folders selected. Passing through existing lora_stack."
-                )
-            return ([], "", "No valid folders or LoRA files found.")
+                all_trigger_words = [extra_trigger_words] if extra_trigger_words else []
+                return list(lora_stack), ", ".join(all_trigger_words), "No valid folders selected. Passing through existing lora_stack."
+            return [], "", "No valid folders or LoRA files found."
 
         if exclusive_mode == "On":
             selected_entries = [py_random.choice(valid_entries)]
@@ -243,7 +253,6 @@ class RandomLoRAFolder:
 
         output_loras = []
         trigger_words_list = []
-
         for full_path, min_s, max_s in selected_entries:
             strength = round(py_random.uniform(min_s, max_s), 3)
             output_loras.append((full_path, strength, strength))
@@ -262,20 +271,17 @@ class RandomLoRAFolder:
         cache_size = len(self._lora_info_cache)
 
         help_text = (
-            "Usage:\n"
-            " - Connect inputs to see available folder options.\n"
-            " - Only folders with valid paths (not 'None') will be processed.\n"
-            " - LoRA selection randomizes every execution.\n\n"
-            "force_refresh_cache:\n"
-            " - True: Clears LoRA info cache and regenerates files.\n"
-            " - False: Uses cached LoRA info for better performance.\n\n"
-            f"Current cache size: {cache_size} LoRAs\n\n"
+            "refresh_loras:\n"
+            " - True: Forces new randomization with time-based seed.\n"
+            " - False: Maintains deterministic selection/strength based on inputs.\n\n"
+            f"Current cache size: {cache_size} LoRAs\n"
             "exclusive_mode:\n"
-            " - On: Selects only one random LoRA from all collected.\n"
+            " - On: Selects one random LoRA from all collected.\n"
             " - Off: Uses all LoRAs from specified folders.\n"
         )
 
-        return (output_loras, trigger_words_string, help_text)
+        return output_loras, trigger_words_string, help_text
+
 
 
 
