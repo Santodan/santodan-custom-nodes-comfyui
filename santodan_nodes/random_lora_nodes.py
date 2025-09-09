@@ -128,6 +128,10 @@ class RandomLoRACustom:
         return (output_loras, trigger_words_string, help_text)
 
 
+import os
+import folder_paths
+from .lora_info import get_lora_info
+
 class RandomLoRAFolder:
     _lora_info_cache = {}
     _last_refresh_state = {}
@@ -222,12 +226,21 @@ class RandomLoRAFolder:
     ):
         import random as py_random
 
-        # Seed RNG: deterministic if refresh_loras=False, random if True
+        # -----------------------
+        # Step 1: select LoRAs
+        # -----------------------
         if refresh_loras:
-            py_random.seed(time.time_ns())
+            selection_rng = py_random.Random(py_random.randrange(1 << 30))
         else:
-            seed_string = str(sorted(kwargs.items()))
-            py_random.seed(hash(seed_string) % (2**32))
+            # deterministic seed based only on folder paths, counts, exclusive_mode
+            selection_seed_data = []
+            for i in range(1, 11):
+                selection_seed_data.append((
+                    kwargs.get(f"folder_path_{i}"),
+                    kwargs.get(f"lora_count_{i}", 1)
+                ))
+            selection_seed_string = str(exclusive_mode) + str(selection_seed_data)
+            selection_rng = py_random.Random(hash(selection_seed_string) % (2**32))
 
         valid_entries = []
         for i in range(1, 11):
@@ -236,7 +249,7 @@ class RandomLoRAFolder:
                 count = kwargs.get(f"lora_count_{i}", 1)
                 min_strength = kwargs.get(f"min_strength_{i}", 0.6)
                 max_strength = kwargs.get(f"max_strength_{i}", 1.0)
-                picked_loras = self.pick_random_loras_from_folder(folder.strip(), count, rng=py_random)
+                picked_loras = self.pick_random_loras_from_folder(folder.strip(), count, rng=selection_rng)
                 for full_path in picked_loras:
                     valid_entries.append((full_path, min_strength, max_strength))
 
@@ -247,14 +260,24 @@ class RandomLoRAFolder:
             return [], "", "No valid folders or LoRA files found."
 
         if exclusive_mode == "On":
-            selected_entries = [py_random.choice(valid_entries)]
+            selected_entries = [selection_rng.choice(valid_entries)]
         else:
             selected_entries = valid_entries
+
+        # -----------------------
+        # Step 2: generate strengths
+        # -----------------------
+        if refresh_loras:
+            strength_rng = py_random.Random(py_random.randrange(1 << 30))
+        else:
+            # deterministic strength seed based on selected LoRAs and their min/max
+            strength_seed_string = str(selected_entries)
+            strength_rng = py_random.Random(hash(strength_seed_string) % (2**32))
 
         output_loras = []
         trigger_words_list = []
         for full_path, min_s, max_s in selected_entries:
-            strength = round(py_random.uniform(min_s, max_s), 3)
+            strength = round(strength_rng.uniform(min_s, max_s), 3)
             output_loras.append((full_path, strength, strength))
             _, trained_words, _, _ = self.get_cached_lora_info(full_path)
             if trained_words:
@@ -272,8 +295,8 @@ class RandomLoRAFolder:
 
         help_text = (
             "refresh_loras:\n"
-            " - True: Forces new randomization with time-based seed.\n"
-            " - False: Maintains deterministic selection/strength based on inputs.\n\n"
+            " - True: Forces new randomization for LoRAs and strengths.\n"
+            " - False: Maintains LoRA selection but regenerates strengths if min/max changed.\n\n"
             f"Current cache size: {cache_size} LoRAs\n"
             "exclusive_mode:\n"
             " - On: Selects one random LoRA from all collected.\n"
@@ -281,6 +304,7 @@ class RandomLoRAFolder:
         )
 
         return output_loras, trigger_words_string, help_text
+
 
 
 
