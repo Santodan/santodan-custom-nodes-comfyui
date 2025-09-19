@@ -1,0 +1,37 @@
+# ------------------------
+# Python ignores
+# ------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+*.log
+
+# Virtual environments
+.env
+.venv
+venv/
+ENV/
+env.bak/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# ------------------------
+# ComfyUI custom nodes
+# ------------------------
+# Local cache / compiled files
+santodan_nodes/__pycache__/
+__pycache__/
+
+# Local DB or cache JSONs (not needed in repo)
+santodan_nodes/db.json
+
+# ------------------------
+# OS-specific
+# ------------------------
+.DS_Store
+Thumbs.db
