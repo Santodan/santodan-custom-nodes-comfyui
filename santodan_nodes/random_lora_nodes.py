@@ -28,9 +28,9 @@ class RandomLoRACustom:
         for i in range(1, 11):
             inputs["required"][f"lora_name_{i}"] = (loras,)
             inputs["required"][f"min_strength_{i}"] = (
-                "FLOAT", {"default": 0.6, "min": 0.0, "max": 10.0, "step": 0.01})
+                "FLOAT", {"default": 0.6, "min": -10.0, "max": 10.0, "step": 0.01})
             inputs["required"][f"max_strength_{i}"] = (
-                "FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01})
+                "FLOAT", {"default": 1.0, "min": -10.0, "max": 10.0, "step": 0.01})
 
         return inputs
 
@@ -157,9 +157,9 @@ class RandomLoRAFolder:
             inputs["optional"][f"lora_count_{i}"] = (
                 "INT", {"default": 1, "min": 1, "max": 10, "step": 1})
             inputs["optional"][f"min_strength_{i}"] = (
-                "FLOAT", {"default": 0.6, "min": 0.0, "max": 10.0, "step": 0.01})
+                "FLOAT", {"default": 0.6, "min": -10.0, "max": 10.0, "step": 0.01})
             inputs["optional"][f"max_strength_{i}"] = (
-                "FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.01})
+                "FLOAT", {"default": 1.0, "min": -10.0, "max": 10.0, "step": 0.01})
 
         return inputs
 
@@ -305,9 +305,6 @@ class RandomLoRAFolder:
         )
 
         return output_loras, trigger_words_string, help_text
-
-
-
 
 
 class LoRACachePreloader:
