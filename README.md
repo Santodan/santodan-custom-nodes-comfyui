@@ -60,7 +60,7 @@ This helps avoid performance issues with large LoRA libraries.
 
 ## 📸 Screenshot / Demo
 
-![preview](preview/image1.png)
+![preview](preview/image.png)
 
 ---
 
