@@ -9,7 +9,7 @@ Repository = "https://github.com/Santodan/santodan-custom-nodes-comfyui"
 #  Used by Comfy Registry https://registry.comfy.org
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "danny.santos93@hotmail.com"
 DisplayName = "santodan-custom-nodes-comfyui"
 Icon = ""
 includes = []
