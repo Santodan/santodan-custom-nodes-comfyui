@@ -2,7 +2,7 @@ import os
 import sys
 import time
 import folder_paths
-from random import uniform, sample
+import random
 from .lora_info import get_lora_info
 
 sys.path.append(os.path.dirname(__file__))
@@ -130,9 +130,6 @@ class RandomLoRACustom:
 
         return (output_loras, trigger_words_string, help_text)
 
-
-
-
 class RandomLoRAFolder:
     _lora_info_cache = {}
     _last_refresh_state = {}
@@ -149,18 +146,17 @@ class RandomLoRAFolder:
             "optional": {
                 "lora_stack": ("LORA_STACK",),
                 "extra_trigger_words": ("STRING", {"forceInput": True}),
+                "exclude_loras_from_node": ("LORA_LIST",),
             }
         }
-
         for i in range(1, 11):
             inputs["optional"][f"folder_path_{i}"] = (folders,)
             inputs["optional"][f"lora_count_{i}"] = (
-                "INT", {"default": 1, "min": 1, "max": 10, "step": 1})
+                "INT", {"default": 1, "min": 1, "max": 99, "step": 1})
             inputs["optional"][f"min_strength_{i}"] = (
                 "FLOAT", {"default": 0.6, "min": -10.0, "max": 10.0, "step": 0.01})
             inputs["optional"][f"max_strength_{i}"] = (
                 "FLOAT", {"default": 1.0, "min": -10.0, "max": 10.0, "step": 0.01})
-
         return inputs
 
     RETURN_TYPES = ("LORA_STACK", "STRING", "STRING")
@@ -172,7 +168,6 @@ class RandomLoRAFolder:
     def IS_CHANGED(cls, refresh_loras=False, force_refresh_cache=False, **kwargs):
         if force_refresh_cache:
             cls._lora_info_cache.clear()
-
         node_key = str(kwargs)
         import uuid
         if refresh_loras or node_key not in cls._last_refresh_state:
@@ -202,27 +197,35 @@ class RandomLoRAFolder:
                 cls._lora_info_cache[lora_path] = (None, None, None, None)
         return cls._lora_info_cache[lora_path]
 
-    def pick_random_loras_from_folder(self, relative_folder, count=1, rng=None):
+    def pick_random_loras_from_folder(self, relative_folder, count=1, rng=None, exclude_list=None):
         import os, random
         lora_base_path = folder_paths.get_folder_paths("loras")[0]
         folder = os.path.join(lora_base_path, relative_folder)
         if not os.path.isdir(folder):
             return []
+
         files = [f for f in os.listdir(folder) if f.endswith((".safetensors", ".pt"))]
+
+        # 🔹 Robust exclusion logic
+        if exclude_list:
+            exclude_set = {os.path.basename(f).strip() for f in exclude_list if f and f != "None"}
+            files = [f for f in files if f.strip() not in exclude_set]
+
         if not files:
             return []
+
         actual_count = min(count, len(files))
         rng = rng or random
         selected_files = rng.sample(files, actual_count)
         return [os.path.join(relative_folder, f).replace("\\", "/") for f in selected_files]
 
     def random_lora_stacker(
-        self,
-        exclusive_mode,
+        self, exclusive_mode,
         refresh_loras=False,
         force_refresh_cache=False,
         lora_stack=None,
         extra_trigger_words="",
+        exclude_loras_from_node=None,
         **kwargs
     ):
         import random as py_random
@@ -233,7 +236,6 @@ class RandomLoRAFolder:
         if refresh_loras:
             selection_rng = py_random.Random(py_random.randrange(1 << 30))
         else:
-            # deterministic seed based only on folder paths, counts, exclusive_mode
             selection_seed_data = []
             for i in range(1, 11):
                 selection_seed_data.append((
@@ -250,7 +252,14 @@ class RandomLoRAFolder:
                 count = kwargs.get(f"lora_count_{i}", 1)
                 min_strength = kwargs.get(f"min_strength_{i}", 0.6)
                 max_strength = kwargs.get(f"max_strength_{i}", 1.0)
-                picked_loras = self.pick_random_loras_from_folder(folder.strip(), count, rng=selection_rng)
+
+                picked_loras = self.pick_random_loras_from_folder(
+                    folder.strip(),
+                    count,
+                    rng=selection_rng,
+                    exclude_list=exclude_loras_from_node
+                )
+
                 for full_path in picked_loras:
                     valid_entries.append((full_path, min_strength, max_strength))
 
@@ -271,7 +280,6 @@ class RandomLoRAFolder:
         if refresh_loras:
             strength_rng = py_random.Random(py_random.randrange(1 << 30))
         else:
-            # deterministic strength seed based on selected LoRAs and their min/max
             strength_seed_string = str(selected_entries)
             strength_rng = py_random.Random(hash(strength_seed_string) % (2**32))
 
@@ -306,6 +314,38 @@ class RandomLoRAFolder:
 
         return output_loras, trigger_words_string, help_text
 
+class ExcludedLoras:
+    @classmethod
+    def INPUT_TYPES(cls):
+        loras = ["None"] + folder_paths.get_filename_list("loras")
+        inputs = {
+            "required": {
+                "lora_1": (loras,),
+                "lora_2": (loras,),
+                "lora_3": (loras,),
+                "lora_4": (loras,),
+                "lora_5": (loras,),
+            },
+            "optional": {
+                "merge_previous": ("LORA_LIST",)  # accept previous ExcludedLoras output
+            }
+        }
+        return inputs
+
+    RETURN_TYPES = ("LORA_LIST",)
+    RETURN_NAMES = ("excluded_loras",)
+    FUNCTION = "generate_excluded_loras"
+    CATEGORY = "SantoDan/LoRA"
+
+    def generate_excluded_loras(self, lora_1, lora_2, lora_3, lora_4, lora_5, merge_previous=None):
+        excluded = [lora_1, lora_2, lora_3, lora_4, lora_5]
+        excluded = [l for l in excluded if l and l != "None"]
+
+        # Merge previous nodes if provided
+        if merge_previous:
+            excluded.extend([l for l in merge_previous if l and l != "None"])
+
+        return excluded,
 
 class LoRACachePreloader:
     @classmethod
