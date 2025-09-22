@@ -15,6 +15,10 @@ The **Randomize LoRAs** node lets you experiment by randomly selecting LoRAs fro
 The **Random LoRA Folder Selector** node lets you experiment by randomly selecting LoRAs from a doler and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed and how many to be selected by folder.  
 Additionally, if the LoRA includes trigger words (via `lora-info`), these are extracted and returned for use in prompts.
 
+## 🎲 Excluded Loras
+
+The **Excluded Loras** node lets you select 5 lroas to be excluded in the **Random LoRA Folder Selecto**, this way you don't need to worry about the select getting an unwanted lora from the folder
+
 ## 🎲 LoRA Cache Preloader
 
 This is a node to have the information for the loras preloaded into the `db.json`  
