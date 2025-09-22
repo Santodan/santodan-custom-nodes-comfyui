@@ -1,7 +1,7 @@
 [project]
 name = "santodan-custom-nodes-comfyui"
 description = "Randomizes selected LoRAs and strengths. Includes trigger word output and support for exclusive/random selection."
-version = "1.2.0"
+version = "1.2.1"
 license = {file = "LICENSE"}
 
 [project.urls]
