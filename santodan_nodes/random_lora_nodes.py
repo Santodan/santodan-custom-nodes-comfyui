@@ -4,9 +4,89 @@ import time
 import folder_paths
 import random
 from .lora_info import get_lora_info
+import re
+from PIL import Image, PngImagePlugin
+import nodes  # ComfyUI’s built-in
+from pathlib import Path
 
 sys.path.append(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
+
+#import inspect
+#from nodes import LoraLoader
+#print(inspect.signature(LoraLoader.load_lora))
+
+class ExtractAndApplyLoRAs:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image_path": ("STRING", {"default": "./input/example.png"}),
+                "model": ("MODEL",),
+                "clip": ("CLIP",),  # Needed to apply LoRAs
+            }
+        }
+
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING")
+    RETURN_NAMES = ("MODEL", "CLIP", "LORA_INFO")
+    FUNCTION = "apply"
+    CATEGORY = "Custom/LoRA"
+
+    def _normalize_name(self, name: str) -> str:
+        # lowercase and replace spaces, dots, dashes with underscores
+        return re.sub(r"[ .-]", "_", name.lower())
+
+    def apply(self, image_path, model, clip):
+        # Load image metadata
+        try:
+            with Image.open(image_path) as img:
+                metadata = img.info.get("parameters", "")
+        except Exception as e:
+            return model, clip, f"Error reading metadata: {e}"
+
+        if not metadata:
+            return model, clip, "No LoRAs found in metadata"
+
+        # Extract <lora:NAME:STRENGTH>
+        lora_matches = re.findall(r"<lora:([^:>]+):([-+]?[0-9]*\.?[0-9]+)>", metadata)
+        if not lora_matches:
+            return model, clip, "No LoRAs found in metadata"
+
+        # Build lookup of all LoRA files in ComfyUI's loras folder
+        loras_root = folder_paths.get_folder_paths("loras")[0]
+        available_loras = {}
+        for root, _, files in os.walk(loras_root):
+            for f in files:
+                if f.endswith((".safetensors", ".ckpt", ".pt")):
+                    norm = self._normalize_name(os.path.splitext(f)[0])
+                    rel_path = os.path.relpath(os.path.join(root, f), loras_root)  # relative path
+                    available_loras[norm] = rel_path
+
+        loader = nodes.LoraLoader()
+        applied = []
+
+        for name, weight_str in lora_matches:
+            try:
+                weight = float(weight_str)
+            except:
+                weight = 1.0
+
+            norm_name = self._normalize_name(name)
+
+            if norm_name in available_loras:
+                lora_file = available_loras[norm_name]  # relative path
+                try:
+                    model, clip = loader.load_lora(model, clip, lora_file, weight, weight)
+                    applied.append(f"{name}:{weight} -> {lora_file}")
+                except Exception as e:
+                    applied.append(f"{name}:{weight} ❌ ({e})")
+            else:
+                applied.append(f"{name}:{weight} (NOT FOUND)")
+
+        applied_text = ", ".join(applied) if applied else "No LoRAs applied"
+        return model, clip, applied_text
+
+
 
 class RandomLoRACustom:
     @classmethod

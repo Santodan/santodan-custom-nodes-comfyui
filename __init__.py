@@ -5,6 +5,7 @@ NODE_CLASS_MAPPINGS = {
     "RandomLoRAFolder": RandomLoRAFolder,
     "LoRACachePreloader": LoRACachePreloader,
     "ExcludedLoras": ExcludedLoras,
+    "ExtractAndApplyLoRAs": ExtractAndApplyLoRAs,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -12,6 +13,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RandomLoRAFolder": "Random LoRA Folder Selector",
     "LoRACachePreloader": "LoRA Cache Preloader",
     "ExcludedLoras": "Excluded Loras",
+    "ExtractAndApplyLoRAs": "Extract And Apply LoRAs",
 }
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
