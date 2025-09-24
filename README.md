@@ -15,11 +15,17 @@ The **Randomize LoRAs** node lets you experiment by randomly selecting LoRAs fro
 The **Random LoRA Folder Selector** node lets you experiment by randomly selecting LoRAs from a doler and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed and how many to be selected by folder.  
 Additionally, if the LoRA includes trigger words (via `lora-info`), these are extracted and returned for use in prompts.
 
-## 🎲 Excluded Loras
+## 🎲🚫 Excluded Loras
 
 The **Excluded Loras** node lets you select 5 lroas to be excluded in the **Random LoRA Folder Selecto**, this way you don't need to worry about the select getting an unwanted lora from the folder
 
-## 🎲 LoRA Cache Preloader
+## 🎲⛏️ Extract And Apply LoRAs
+
+The **Extract And Apply LoRAs** node lets you extract the LoRAs that were saved using the [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) node and apply them to a workflow.
+This was created so I could try to generate better enhancement workflow but with the same loras and weight as the initial one.
+I would recommend use the [SDBatchLoader](https://github.com/receyuki/comfyui-prompt-reader-node) to load multiple images at the same time and connecting the output to the path field in my node
+
+## 🎲📦 LoRA Cache Preloader
 
 This is a node to have the information for the loras preloaded into the `db.json`  
 You can select the folder that you want to run it.  
