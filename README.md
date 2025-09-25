@@ -6,6 +6,50 @@ This is a standalone ComfyUI custom node for **randomizing LoRAs** with adjustab
 
 ---
 
+# 🪄 Wildcard Manager Node
+
+The **Wildcard Manager** is a powerful dynamic prompt and wildcard processor. It allows you to create complex, randomized text prompts using a flexible syntax that supports nesting, weights, multi-selection, and more. It is designed to be compatible with the popular syntax used in the Impact Pack's Wildcard processor, making it easy to adopt existing prompts and wildcards.
+
+Reading the files from the default ComfyUI folder ( `ComfyUi/Wildcards` )
+
+### ✨ Key Features & Syntax
+
+-   **Dynamic Prompts:** Randomly select one item from a list.
+    -   Example: `{blue|red|green}` will randomly become `blue`, `red`, or `green`.
+-   **Wildcards:** Randomly select a line from a `.txt` file in your `ComfyUI/wildcards` directory.
+    -   Example: `__person__` will pull a random line from `person.txt`.
+-   **Nesting:** Combine syntaxes for complex results.
+    -   Example: `{a|{b|__c__}}`
+-   **Weighted Choices:** Give certain options a higher chance of being selected.
+    -   Example: `{5::red|2::green|blue}` (red is most likely, blue is least).
+-   **Multi-Select:** Select multiple items from a list, with a custom separator.
+    -   Example: `{1-2$$ and $$cat|dog|bird}` could become `cat`, `dog`, `bird`, `cat and dog`, `cat and bird`, or `dog and bird`.
+-   **Quantifiers:** Repeat a wildcard multiple times to create a list for multi-selection.
+    -   Example: `{2$$, $$3#__colors__}` expands to select 2 items from `__colors__|__colors__|__colors__`.
+-   **Comments:** Lines starting with `#` are ignored, both in the node's text field and within wildcard files.
+
+### 🔧 Wildcard Manager Inputs
+
+-   `wildcards_list`: A dropdown of your available wildcard files. Selecting one inserts its tag (e.g., `__person__`) into the text.
+-   `processing_mode`:
+    -   **`line by line`**: Treats each line as a separate prompt for batch processing.
+    -   **`entire text as one`**: Processes the entire text block as a single prompt, preserving paragraphs.
+	
+## 📸 Screenshot / Demo
+
+- Wildcard - Entire Text As One
+![wildcardEntireTextAsOne](preview/wildcardEntireTextAsOne.png)
+
+- Wildcard - Line By Line
+![wildcardLineByLine](preview/wildcardLineByLine.png)
+
+- Wildcard - Comptability with PromptList for a batch processing
+![wildcardPromptList](preview/wildcardPromptList.png)
+
+---
+
+# LoRAs Nodes
+
 ## 🎲 Randomize LoRAs Node
 
 The **Randomize LoRAs** node lets you experiment by randomly selecting LoRAs from a list and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed.
@@ -124,4 +168,7 @@ Restart ComfyUI.
   Used to create the whole code as I only have some basic programming knowledge
 
 - **Claude.ai**  
+  Used to create the whole code as I only have some basic programming knowledge
+
+- **Gemini (Google AI)**  
   Used to create the whole code as I only have some basic programming knowledge
