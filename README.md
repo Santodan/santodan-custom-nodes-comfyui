@@ -35,6 +35,16 @@ Reading the files from the default ComfyUI folder ( `ComfyUi/Wildcards` )
     -   **`line by line`**: Treats each line as a separate prompt for batch processing.
     -   **`entire text as one`**: Processes the entire text block as a single prompt, preserving paragraphs.
 	
+### 🗂️ File Management
+
+The node includes buttons for managing your wildcard files directly from the ComfyUI interface, eliminating the need to manually edit text files.
+
+-   **Insert Selected:** Insertes the selected wildcard to the text.
+-   **Edit/Create Wildcard:** Opens the content of the wildcard currently selected in the dropdown in an editor, allowing you to make changes and save/create them.
+  - You need to have the `[Create New]` selected in the `wildcards_list` dropdown
+-   **Delete Selected:** Asks for confirmation and then permanently deletes the wildcard file selected in the dropdown.
+
+	
 ## 📸 Screenshot / Demo
 
 - Wildcard - Entire Text As One
