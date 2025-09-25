@@ -1,4 +1,5 @@
 from .santodan_nodes.random_lora_nodes import *
+from .santodan_nodes.wildcard import *
 
 NODE_CLASS_MAPPINGS = {
     "RandomLoRACustom": RandomLoRACustom,
@@ -6,6 +7,7 @@ NODE_CLASS_MAPPINGS = {
     "LoRACachePreloader": LoRACachePreloader,
     "ExcludedLoras": ExcludedLoras,
     "ExtractAndApplyLoRAs": ExtractAndApplyLoRAs,
+    "WildcardManager": WildcardManager,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -14,6 +16,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoRACachePreloader": "LoRA Cache Preloader",
     "ExcludedLoras": "Excluded Loras",
     "ExtractAndApplyLoRAs": "Extract And Apply LoRAs",
+    "WildcardManager": "Wildcard Manager",
 }
 
-__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
+WEB_DIRECTORY = "web"
+
+__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]

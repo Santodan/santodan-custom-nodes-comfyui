@@ -30,7 +30,7 @@ class ExtractAndApplyLoRAs:
     RETURN_TYPES = ("MODEL", "CLIP", "STRING")
     RETURN_NAMES = ("MODEL", "CLIP", "LORA_INFO")
     FUNCTION = "apply"
-    CATEGORY = "Custom/LoRA"
+    CATEGORY = "Santodan/LoRA"
 
     def _normalize_name(self, name: str) -> str:
         # lowercase and replace spaces, dots, dashes with underscores
@@ -86,8 +86,6 @@ class ExtractAndApplyLoRAs:
         applied_text = ", ".join(applied) if applied else "No LoRAs applied"
         return model, clip, applied_text
 
-
-
 class RandomLoRACustom:
     @classmethod
     def INPUT_TYPES(cls):
@@ -117,7 +115,7 @@ class RandomLoRACustom:
     RETURN_TYPES = ("LORA_STACK", "STRING", "STRING")
     RETURN_NAMES = ("lora_stack", "trigger_words", "help_text")
     FUNCTION = "random_lora_stacker"
-    CATEGORY = "SantoDan/LoRA"
+    CATEGORY = "Santodan/LoRA"
     _last_refresh_state = {}
 
     @classmethod
@@ -242,7 +240,7 @@ class RandomLoRAFolder:
     RETURN_TYPES = ("LORA_STACK", "STRING", "STRING")
     RETURN_NAMES = ("lora_stack", "trigger_words", "help_text")
     FUNCTION = "random_lora_stacker"
-    CATEGORY = "SantoDan/LoRA"
+    CATEGORY = "Santodan/LoRA"
 
     @classmethod
     def IS_CHANGED(cls, refresh_loras=False, force_refresh_cache=False, **kwargs):
@@ -415,7 +413,7 @@ class ExcludedLoras:
     RETURN_TYPES = ("LORA_LIST",)
     RETURN_NAMES = ("excluded_loras",)
     FUNCTION = "generate_excluded_loras"
-    CATEGORY = "SantoDan/LoRA"
+    CATEGORY = "Santodan/LoRA"
 
     def generate_excluded_loras(self, lora_1, lora_2, lora_3, lora_4, lora_5, merge_previous=None):
         excluded = [lora_1, lora_2, lora_3, lora_4, lora_5]
@@ -441,7 +439,7 @@ class LoRACachePreloader:
     RETURN_TYPES = ("STRING", "INT")
     RETURN_NAMES = ("status", "cached_count")
     FUNCTION = "preload_lora_cache"
-    CATEGORY = "SantoDan/LoRA"
+    CATEGORY = "Santodan/LoRA"
 
     @classmethod
     def IS_CHANGED(cls, preload_cache=False, **kwargs):
