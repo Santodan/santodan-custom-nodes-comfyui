@@ -41,7 +41,7 @@ The node includes buttons for managing your wildcard files directly from the Com
 
 -   **Insert Selected:** Insertes the selected wildcard to the text.
 -   **Edit/Create Wildcard:** Opens the content of the wildcard currently selected in the dropdown in an editor, allowing you to make changes and save/create them.
-  - You need to have the `[Create New]` selected in the `wildcards_list` dropdown
+     - You need to have the `[Create New]` selected in the `wildcards_list` dropdown
 -   **Delete Selected:** Asks for confirmation and then permanently deletes the wildcard file selected in the dropdown.
 
 	
