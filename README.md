@@ -46,6 +46,9 @@ Reading the files from the default ComfyUI folder ( `ComfyUi/Wildcards` )
 - Wildcard - Comptability with PromptList for a batch processing
 ![wildcardPromptList](preview/wildcardPromptList.png)
 
+- Wildcard - View Content
+![wildcardViewContent](preview/wildcardViewContent.png)
+
 ---
 
 # LoRAs Nodes
