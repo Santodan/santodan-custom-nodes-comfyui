@@ -37,7 +37,6 @@ class WildcardManager:
                 "text": ("STRING", {"multiline": True, "default": "A {1$$cute|big|small} {3::cat|dog} is sitting on the __object__."}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
                 "processing_mode": (["line by line", "entire text as one"],),
-                "control_after_generate": (["fixed", "increment", "decrement", "randomize"],),
                 "processed_text_preview": ("STRING", {"multiline": True, "default": "", "output": True}), # Mark as output
             },
         }
@@ -47,6 +46,34 @@ class WildcardManager:
     OUTPUT_IS_LIST = (True,)
     FUNCTION = "process_text"
     CATEGORY = "santodan"
+    DESCRIPTION = """
+# Wildcard Manager Node
+
+This node provides a complete system for managing and using wildcard files directly within your workflow. It allows you to dynamically generate multiple prompts from a single template.
+
+### HOW TO USE:
+
+Tooltips:
+    - Insert Selected: Insertes the selected wildcard to the text.
+    - Edit/Create Wildcard: Opens the content of the wildcard currently selected in the dropdown in an editor, allowing you to make changes and save/create them.
+        - You need to have the [Create New] selected in the wildcards_list dropdown
+    - Delete Selected: Asks for confirmation and then permanently deletes the wildcard file selected in the dropdown.
+
+### ADDITIONAL SYNTAX:
+    - Dynamic Prompts: Randomly select one item from a list.
+        Example: {blue|red|green} will randomly become blue, red, or green.
+    - Wildcards: Randomly select a line from a .txt file in your ComfyUI/wildcards directory.
+        Example: __person__ will pull a random line from person.txt.
+    - Nesting: Combine syntaxes for complex results.
+        Example: {a|{b|__c__}}
+    - Weighted Choices: Give certain options a higher chance of being selected.
+        Example: {5::red|2::green|blue} (red is most likely, blue is least).
+    - Multi-Select: Select multiple items from a list, with a custom separator.
+        Example: {1-2$$ and $$cat|dog|bird} could become cat, dog, bird, cat and dog, cat and bird, or dog and bird.
+    - Quantifiers: Repeat a wildcard multiple times to create a list for multi-selection.
+        Example: {2$$, $$3#__colors__} expands to select 2 items from __colors__|__colors__|__colors__.
+    - Comments: Lines starting with # are ignored, both in the node's text field and within wildcard files.
+"""
 
     def _get_wildcard_options(self, wildcard_name):
         """Loads and caches options from a wildcard file."""
@@ -121,7 +148,7 @@ class WildcardManager:
                 print(f"Warning: Wildcard '{wildcard_name}' not found or is empty."); text = text[:match.start()] + text[match.end():].lstrip()
         return text
 
-    def process_text(self, wildcards_list, text, seed, processing_mode, control_after_generate, processed_text_preview=""):
+    def process_text(self, wildcards_list, text, seed, processing_mode, processed_text_preview=""):
         if isinstance(text, list): text = "\n".join(text)
         rng = random.Random(seed); processed_texts = []
         if processing_mode == "entire text as one":
