@@ -15,16 +15,22 @@ class WildcardManager:
 
     @classmethod
     def get_wildcard_files(cls):
-        """Gets a list of wildcard files and prepends the '[Create New]' option."""
+        """Gets a list of wildcard files from the wildcards folder and its subfolders."""
         wildcards_path = os.path.join(folder_paths.base_path, "wildcards")
         if not os.path.exists(wildcards_path):
-            # If the folder doesn't exist, only allow creation
             return ["[Create New]"]
         
+        file_list = []
         try:
-            files = os.listdir(wildcards_path)
-            file_list = sorted([f[:-4] for f in files if f.endswith('.txt')])
-            return ["[Create New]"] + file_list
+            for root, _, files in os.walk(wildcards_path):
+                for file in files:
+                    if file.endswith('.txt'):
+                        # Get the relative path from the wildcards_path
+                        relative_path = os.path.relpath(os.path.join(root, file), wildcards_path)
+                        # Remove the .txt extension and normalize path separators for display
+                        wildcard_name = os.path.splitext(relative_path)[0].replace('\\', '/')
+                        file_list.append(wildcard_name)
+            return ["[Create New]"] + sorted(file_list)
         except Exception as e:
             print(f"WildcardManager Error: Could not read wildcards folder. {e}")
             return ["[Create New]", "(Error reading folder)"]
@@ -45,7 +51,7 @@ class WildcardManager:
     RETURN_NAMES = ("processed_text",)
     OUTPUT_IS_LIST = (True,)
     FUNCTION = "process_text"
-    CATEGORY = "santodan"
+    CATEGORY = "Santodan/Wildcard"
     DESCRIPTION = """
 # Wildcard Manager Node
 
@@ -63,7 +69,7 @@ Tooltips:
     - Dynamic Prompts: Randomly select one item from a list.
         Example: {blue|red|green} will randomly become blue, red, or green.
     - Wildcards: Randomly select a line from a .txt file in your ComfyUI/wildcards directory.
-        Example: __person__ will pull a random line from person.txt.
+        Example: __person__ or __subfolder/person__ will pull a random line from person.txt.
     - Nesting: Combine syntaxes for complex results.
         Example: {a|{b|__c__}}
     - Weighted Choices: Give certain options a higher chance of being selected.
@@ -76,8 +82,9 @@ Tooltips:
 """
 
     def _get_wildcard_options(self, wildcard_name):
-        """Loads and caches options from a wildcard file."""
+        """Loads and caches options from a wildcard file, supporting subdirectories."""
         wildcards_path = os.path.join(folder_paths.base_path, "wildcards")
+        # os.path.join handles both Windows and Linux separators correctly
         wildcard_file_path = os.path.join(wildcards_path, f"{wildcard_name}.txt")
         if os.path.exists(wildcard_file_path):
             with open(wildcard_file_path, 'r', encoding='utf-8') as f:
@@ -173,3 +180,4 @@ Tooltips:
             }, 
             "result": (processed_texts,)
         }
+

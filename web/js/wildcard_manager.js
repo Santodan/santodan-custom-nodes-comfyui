@@ -2,8 +2,8 @@ import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import { ComfyDialog, $el } from "/scripts/ui.js";
 
-// Changed version to v21 to confirm the fix is loaded
-console.log("✅ Santodan Wildcard Manager JS loaded (v21 - Added Insert Button).");
+// Changed version to v22 to confirm subfolder fix is loaded
+console.log("✅ Santodan Wildcard Manager JS loaded (v22 - Subfolder Support).");
 
 const style = `
 .santodan-preview-container { width: 100%; max-height: 300px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 4px; padding: 8px; margin-top: 4px; background-color: var(--bg-color, #1a1a1a); border: 1px solid var(--border-color, #444); border-radius: 4px; box-sizing: border-box; }
@@ -81,7 +81,6 @@ app.registerExtension({
                     } catch (error) { console.error("Failed to save wildcard:", error); alert(`Error saving ${filename}.txt: ${error.message}`); }
                 };
 
-                // ========= NEW FUNCTIONALITY START =========
                 const handleInsert = () => {
                     const value = wildcardsDropdown.value;
                     if (!value || value === "[Create New]" || value.startsWith("(")) {
@@ -95,12 +94,11 @@ app.registerExtension({
                     this.setDirtyCanvas(true, true);
 					setTimeout(() => { textarea.selectionStart = textarea.selectionEnd = start + wildcardToInsert.length; textarea.focus(); }, 0);
                 };
-                // ========= NEW FUNCTIONALITY END =========
 
                 const handleEditOrCreate = async () => {
                     let filename = wildcardsDropdown.value;
                     if (filename === "[Create New]") {
-                        const newFilename = prompt("Enter a name for the new wildcard file (without .txt):");
+                        const newFilename = prompt("Enter a name for the new wildcard file (e.g., 'new_wildcard' or 'subfolder/new_wildcard'):");
                         if (newFilename && newFilename.trim()) { new WildcardEditorDialog().show(newFilename.trim(), "", saveCallback); }
                         return;
                     }
