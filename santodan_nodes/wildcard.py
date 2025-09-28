@@ -30,7 +30,7 @@ class WildcardManager:
                         # Remove the .txt extension and normalize path separators for display
                         wildcard_name = os.path.splitext(relative_path)[0].replace('\\', '/')
                         file_list.append(wildcard_name)
-            return ["[Create New]"] + sorted(file_list)
+            return ["[Create New]"] + sorted(file_list, key=str.lower)
         except Exception as e:
             print(f"WildcardManager Error: Could not read wildcards folder. {e}")
             return ["[Create New]", "(Error reading folder)"]
