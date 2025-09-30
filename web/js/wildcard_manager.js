@@ -129,10 +129,42 @@ app.registerExtension({
                     }
                 };
 
-                // Add the new button and re-order them for clarity
-				this.addWidget("button", "Insert Selected", "insert", handleInsert);
-				this.addWidget("button", "Edit/Create Wildcard", "edit_create", handleEditOrCreate);
-				this.addWidget("button", "Delete Selected", "delete", deleteWildcard);
+                // ========================================================================
+                //                       START OF CORRECTED CODE
+                // ========================================================================
+
+                // 1. Add the buttons as usual. They will be appended to the end of the node by default.
+                // We store references to the created widget objects.
+                const insertButton = this.addWidget("button", "Insert Selected", "insert", handleInsert);
+                const editButton = this.addWidget("button", "Edit/Create Wildcard", "edit_create", handleEditOrCreate);
+                const deleteButton = this.addWidget("button", "Delete Selected", "delete", deleteWildcard);
+
+                // 2. Re-order the widgets array. This controls serialization and widget order logic.
+                const dropdownIndex = this.widgets.findIndex((w) => w.name === "wildcards_list");
+                if (dropdownIndex !== -1) {
+                    // Remove the last three widgets (our buttons) from the array.
+                    const buttons = this.widgets.splice(this.widgets.length - 3, 3);
+                    
+                    // Re-insert the buttons array after the dropdown.
+                    this.widgets.splice(dropdownIndex + 1, 0, ...buttons);
+                }
+
+                // 3. Re-order the actual DOM elements to match the new widget order.
+                // We use the `.element` property, which is the reliable container for any widget.
+                const dropdownEl = wildcardsDropdown.element; 
+                if (dropdownEl) {
+                    // We use .after() to insert the button elements after the dropdown's element.
+                    // The order of arguments here determines the visual order.
+                    dropdownEl.after(
+                        insertButton.element, 
+                        editButton.element, 
+                        deleteButton.element
+                    );
+                }
+
+                // ========================================================================
+                //                        END OF CORRECTED CODE
+                // ========================================================================
 			};
 
 			const onExecuted = nodeType.prototype.onExecuted;
