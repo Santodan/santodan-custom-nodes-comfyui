@@ -47,9 +47,13 @@ class WildcardManager:
             },
         }
 
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("processed_text",)
-    OUTPUT_IS_LIST = (True,)
+    # --- MODIFIED FOR NEW OUTPUT ---
+    RETURN_TYPES = ("STRING", "STRING",)
+    RETURN_NAMES = ("processed_text", "all_wildcards",)
+    # The first output is a list of prompts, the second is a single string containing all wildcard names
+    OUTPUT_IS_LIST = (True, False,) 
+    # -----------------------------
+
     FUNCTION = "process_text"
     CATEGORY = "Santodan/Wildcard"
     DESCRIPTION = """
@@ -155,7 +159,9 @@ Tooltips:
                 print(f"Warning: Wildcard '{wildcard_name}' not found or is empty."); text = text[:match.start()] + text[match.end():].lstrip()
         return text
 
-    def process_text(self, wildcards_list, text, seed, processing_mode, processed_text_preview=""):
+    # --- CORRECTED FUNCTION SIGNATURE ---
+    # The order of parameters now exactly matches the order in INPUT_TYPES.
+    def process_text(self, wildcards_list, text, processing_mode, processed_text_preview, seed):
         if isinstance(text, list): text = "\n".join(text)
         rng = random.Random(seed); processed_texts = []
         if processing_mode == "entire text as one":
@@ -171,13 +177,19 @@ Tooltips:
                 processed_texts.append(self._process_syntax(stripped_line, rng))
         if not processed_texts: processed_texts.append("")
         
-        # --- FIX FOR PREVIEW WIDGET ---
-        # This structure updates both the custom JS preview AND the built-in widget.
+        # --- NEW CODE TO GET WILDCARD LIST FOR OUTPUT ---
+        all_wc_files = self.get_wildcard_files()
+        # Filter out the non-file entries used by the dropdown
+        actual_wc_files = [w for w in all_wc_files if w not in ["[Create New]", "(Error reading folder)"]]
+        # Format as a single newline-separated string for the output
+        all_wildcards_output_str = "\n".join([f"__{w}__" for w in actual_wc_files])
+        # ----------------------------------------------
+        
+        # --- MODIFIED RETURN FOR PREVIEW AND NEW OUTPUT ---
         return {
             "ui": {
                 "preview_list": processed_texts,
                 "processed_text_preview": ["\n".join(processed_texts)]
             }, 
-            "result": (processed_texts,)
+            "result": (processed_texts, all_wildcards_output_str,)
         }
-
