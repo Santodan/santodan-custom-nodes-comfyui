@@ -1,7 +1,7 @@
 [project]
 name = "santodan-custom-nodes-comfyui"
 description = "Wildcard Manager and Randomizes selected LoRAs and strengths. Includes trigger word output and support for exclusive/random selection."
-version = "1.5.3"
+version = "1.5.4"
 license = {file = "LICENSE"}
 
 [project.urls]
