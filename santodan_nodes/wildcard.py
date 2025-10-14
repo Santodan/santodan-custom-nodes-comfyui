@@ -41,7 +41,7 @@ class WildcardManager:
             "required": {
                 "wildcards_list": (cls.get_wildcard_files(),),
                 "text": ("STRING", {"multiline": True, "default": "A {1$$cute|big|small} {3::cat|dog} is sitting on the __object__."}),
-                "processing_mode": (["line by line", "entire text as one"],),
+                "processing_mode": (["entire text as one","line by line"],),
                 "processed_text_preview": ("STRING", {"multiline": True, "default": "", "output": True}), # Mark as output
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             },
