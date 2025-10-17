@@ -76,6 +76,8 @@ Tooltips:
         Example: __person__ or __subfolder/person__ will pull a random line from person.txt.
     - Nesting: Combine syntaxes for complex results.
         Example: {a|{b|__c__}}
+    - Randomize: Randomize the wildcard independently from the seed.
+        Example: __*person__ always pulls a random line from person.txt, regardless of the seed.
     - Weighted Choices: Give certain options a higher chance of being selected.
         Example: {5::red|2::green|blue} (red is most likely, blue is least).
     - Multi-Select: Select multiple items from a list, with a custom separator.
@@ -100,6 +102,7 @@ Tooltips:
         quantifier_pattern = re.compile(r'(\d+)#(__[\w\./\-\\]+__)')
         inner_prompt_pattern = re.compile(r'\{([^{}]*)\}')
         wildcard_pattern = re.compile(r'__([\w\./\-\\]+)__')
+        always_random_pattern = re.compile(r'__\*([\w\./\-\\]+)__')
 
         def expand_quantifier(match):
             count = int(match.group(1))
@@ -108,6 +111,20 @@ Tooltips:
         text, count = quantifier_pattern.subn(expand_quantifier, text)
         while count > 0:
             text, count = quantifier_pattern.subn(expand_quantifier, text)
+
+        while '__*' in text:
+            match = always_random_pattern.search(text)
+            if not match: break
+            wildcard_name = match.group(1)
+            options = self._get_wildcard_options(wildcard_name)
+            if options:
+                # Create a new, unseeded random object for a truly random choice
+                truly_random_rng = random.Random()
+                choice = self._process_syntax(truly_random_rng.choice(options), rng) # still process nested syntax
+                text = text[:match.start()] + choice + text[match.end():]
+            else:
+                print(f"Warning: Wildcard '{wildcard_name}' not found or is empty.")
+                text = text[:match.start()] + text[match.end():].lstrip()
 
         while '{' in text and '}' in text:
             match = inner_prompt_pattern.search(text)
