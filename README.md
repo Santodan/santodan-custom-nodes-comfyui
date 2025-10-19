@@ -20,6 +20,8 @@ Reading the files from the default ComfyUI folder ( `ComfyUi/Wildcards` )
     -   Example: `__person__` will pull a random line from `person.txt`.
 -   **Nesting:** Combine syntaxes for complex results.
     -   Example: `{a|{b|__c__}}`
+-   **Randomize: Randomize** the wildcard independently from the seed.
+        Example: __*person__ always pulls a random line from person.txt, regardless of the seed.
 -   **Weighted Choices:** Give certain options a higher chance of being selected.
     -   Example: `{5::red|2::green|blue}` (red is most likely, blue is least).
 -   **Multi-Select:** Select multiple items from a list, with a custom separator.
@@ -124,6 +126,22 @@ This helps avoid performance issues with large LoRA libraries.
 ## 📸 Screenshot / Demo
 
 ![preview](preview/image.png)
+
+---
+
+## 🔄 Other Nodes:
+### PromptList w/ Template"
+Based on the PromptList from Impact, but this one will be able to save, edit and delete templates
+
+### SaveWorkflowAndShutdown"
+A simple node to shutdown the PC at the end of the workflow if there are no more jobs in the queue.
+There is a delay input, if you want to interrupt, cancel comfyui's process
+
+### Split Batch With Prefix"
+A node to to transform a batch of images into a list.
+It will also ask for a prefix and an index, so it will generate a prompt list.
+The purpose is to save each image from a batch with a corresponding index.
+Example, you have a 5 images batch, you run the node and will output the images as a list and a prompt string of the index+Prefix ( example 0-SDXL_, 1-SDXL_, 2-SDXL_, 3-SDXL_, 4-SDXL_)
 
 ---
 

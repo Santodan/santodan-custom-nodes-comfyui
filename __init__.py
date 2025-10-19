@@ -6,6 +6,7 @@ from .santodan_nodes.wildcard import *
 from .santodan_nodes.promptListTemplate import *
 from .santodan_nodes import promptListTemplate
 from .santodan_nodes.shutdownNode import *
+from .santodan_nodes.utils import *
 # Import our new API routes module
 from .santodan_nodes import server_routes
 
@@ -33,6 +34,7 @@ NODE_CLASS_MAPPINGS = {
     "WildcardManager": WildcardManager,
     "PromptListWithTemplates": PromptListWithTemplates,
     "SaveWorkflowAndShutdown": SaveWorkflowAndShutdown,
+    "SplitBatchWithPrefix": SplitBatchWithPrefix,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "RandomLoRACustom": "Random LoRA Selector",
@@ -43,6 +45,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "WildcardManager": "Wildcard Manager",
     "PromptListWithTemplates": "PromptList w/ Template",
     "Save Workflow & Shutdown": "SaveWorkflowAndShutdown",
+    "SplitBatchWithPrefix": "Split Batch With Prefix",
 }
 WEB_DIRECTORY = "web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
