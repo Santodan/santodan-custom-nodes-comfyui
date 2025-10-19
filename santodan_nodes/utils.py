@@ -1,3 +1,4 @@
+import time
 import torch
 
 class AnyType(str):
@@ -17,7 +18,7 @@ class SplitBatchWithPrefix:
         return {
             "required": {
                 "images": ("IMAGE",),
-                "prefix_text": ("STRING", {"default": "-SDXL_"}),
+                "filename": ("STRING", {"default": "-SDXL_"}),
                 "index": ("INT", {"default": 0, "min": 0, "max": 9999}),
             }
         }
@@ -26,40 +27,58 @@ class SplitBatchWithPrefix:
     RETURN_NAMES = ("image", "name")
     FUNCTION = "pair_one"
     CATEGORY = "Santodan/utils"
+
     def __init__(self):
         self.current_global_index = 0
         self.last_input_index = None
+        self.last_filename = None
+        self.last_call_time = 0.0
+        # time window (seconds) to consider sequential calls part of the same run
+        self._same_run_window = 1.0
 
-    def pair_one(self, images, prefix_text, index):
+    def pair_one(self, images, filename, index):
         if not isinstance(images, torch.Tensor):
             raise ValueError("Expected 'images' to be a torch.Tensor")
 
         if images.ndim != 4:
             raise ValueError(f"Expected [B,H,W,C] tensor, got {images.shape}")
 
-        # Reset counter if input index changed
-        if self.last_input_index != index:
+        # detect new run:
+        # - reset immediately if the starting index or prefix changed
+        # - otherwise, treat closely-timed sequential calls as the same run
+        now = time.time()
+        if self.last_input_index != index or self.last_filename != filename:
+            # new run parameters -> reset
             self.current_global_index = 0
-            self.last_input_index = index
+        else:
+            # if the previous call was long ago, treat as a new run
+            if (now - self.last_call_time) > self._same_run_window:
+                self.current_global_index = 0
 
+        # update run tracking
+        self.last_input_index = index
+        self.last_filename = filename
+        self.last_call_time = now
+
+        # Calculate the batch size
         batch_size = images.shape[0]
+
         # Check if the counter has exceeded the number of images in the batch
         if self.current_global_index >= batch_size:
-            # You might want to handle this case, e.g., by looping back to the first image
-            # or stopping. For now, we'll just clamp it to the last image.
+            # clamp to the last image
             print(f"Warning: Global index ({self.current_global_index}) exceeds batch size ({batch_size}). Using last image.")
-            current_image_index = batch_size - 1
+            current_image_index = max(0, batch_size - 1)
         else:
             current_image_index = self.current_global_index
-            
-        print(f"Batch size: {batch_size}")
-        print(f"Global index: {self.current_global_index}")
-        print(f"Input index: {index}")
-        
-        # Select the image using the current global index, not always index 0
+
+        #print(f"Batch size: {batch_size}")
+        #print(f"Global index: {self.current_global_index}")
+        #print(f"Input index: {index}")
+
+        # Select the image using the current global index
         img = images[current_image_index].unsqueeze(0)
-        name = f"{self.current_global_index + index}{prefix_text}"
-        
+        name = f"{self.current_global_index + index}{filename}"
+
         self.current_global_index += 1
-        
+
         return (img, name)
