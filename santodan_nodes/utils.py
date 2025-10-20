@@ -72,15 +72,10 @@ class SplitBatchWithPrefix:
         # Calculate the batch size
         batch_size = images.shape[0]
 
-        # Check if the counter has exceeded the number of images in the batch
-        if self.current_global_index >= batch_size:
-            # clamp to the last image
-            print(f"Warning: Global index ({self.current_global_index}) exceeds batch size ({batch_size}). Using last image.")
-            current_image_index = max(0, batch_size - 1)
-        else:
-            current_image_index = self.current_global_index
+        # Use modulo to wrap around the index instead of resetting
+        current_image_index = self.current_global_index % batch_size
 
-        # Select the image using the current global index
+        # Select the image using the current image index
         img = images[current_image_index].unsqueeze(0)
         
         # Create path with subfolder
