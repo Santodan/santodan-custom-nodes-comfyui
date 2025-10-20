@@ -1,5 +1,6 @@
 import time
 import torch
+from datetime import datetime
 
 class AnyType(str):
     def __ne__(self, __value: object) -> bool:
@@ -18,7 +19,8 @@ class SplitBatchWithPrefix:
         return {
             "required": {
                 "images": ("IMAGE",),
-                "filename": ("STRING", {"default": "-SDXL_"}),
+                "subfolder": ("STRING", {"default": ""}),
+                "filename": ("STRING", {"default": "_SDXL_"}),
                 "index": ("INT", {"default": 0, "min": 0, "max": 9999}),
             }
         }
@@ -32,22 +34,28 @@ class SplitBatchWithPrefix:
         self.current_global_index = 0
         self.last_input_index = None
         self.last_filename = None
+        self.last_subfolder = None
         self.last_call_time = 0.0
         # time window (seconds) to consider sequential calls part of the same run
         self._same_run_window = 1.0
 
-    def pair_one(self, images, filename, index):
+    def pair_one(self, images, filename, index, subfolder):
         if not isinstance(images, torch.Tensor):
             raise ValueError("Expected 'images' to be a torch.Tensor")
 
         if images.ndim != 4:
             raise ValueError(f"Expected [B,H,W,C] tensor, got {images.shape}")
 
+        # Replace %date:yyyy-MM-dd% with actual date
+        if '%date:' in subfolder:
+            today = datetime.now()
+            subfolder = subfolder.replace('%date:yyyy-MM-dd%', today.strftime('%Y-%m-%d'))
+
         # detect new run:
-        # - reset immediately if the starting index or prefix changed
-        # - otherwise, treat closely-timed sequential calls as the same run
         now = time.time()
-        if self.last_input_index != index or self.last_filename != filename:
+        if (self.last_input_index != index or 
+            self.last_filename != filename or 
+            self.last_subfolder != subfolder):
             # new run parameters -> reset
             self.current_global_index = 0
         else:
@@ -58,6 +66,7 @@ class SplitBatchWithPrefix:
         # update run tracking
         self.last_input_index = index
         self.last_filename = filename
+        self.last_subfolder = subfolder
         self.last_call_time = now
 
         # Calculate the batch size
@@ -71,13 +80,15 @@ class SplitBatchWithPrefix:
         else:
             current_image_index = self.current_global_index
 
-        #print(f"Batch size: {batch_size}")
-        #print(f"Global index: {self.current_global_index}")
-        #print(f"Input index: {index}")
-
         # Select the image using the current global index
         img = images[current_image_index].unsqueeze(0)
-        name = f"{self.current_global_index + index}{filename}"
+        
+        # Create path with subfolder
+        subfolder = subfolder.strip().rstrip('/')  # Remove trailing slashes
+        if subfolder:
+            name = f"{subfolder}/{self.current_global_index + index}{filename}"
+        else:
+            name = f"{self.current_global_index + index}{filename}"
 
         self.current_global_index += 1
 
