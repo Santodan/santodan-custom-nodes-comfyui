@@ -70,7 +70,7 @@ def get_template_dir():
 # This function wraps all the route definitions
 def initialize_prompt_list_routes():
     # DIAGNOSTIC PRINT STATEMENT
-    print("✅ [Santodan Nodes] EXECUTING: initialize_prompt_list_routes()")
+    #print("✅ [Santodan Nodes] EXECUTING: initialize_prompt_list_routes()")
 
     @server.PromptServer.instance.routes.post("/easyuse/save_prompt_list")
     async def save_prompt_list_template(request):

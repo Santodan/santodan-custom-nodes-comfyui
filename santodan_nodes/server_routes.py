@@ -34,7 +34,7 @@ def get_safe_wildcard_path(root, user_filename):
 
 # This function will be called from __init__.py to set up all the web routes.
 def initialize_routes(wildcards_path):
-    print("[Santodan Nodes] Initializing wildcard API routes...")
+    #print("[Santodan Nodes] Initializing wildcard API routes...")
 
     @server.PromptServer.instance.routes.get("/santodan/wildcards")
     async def get_wildcards_endpoint(request):
@@ -112,3 +112,4 @@ def initialize_routes(wildcards_path):
                 return web.Response(text=f"File not found: {filename}.txt", status=404)
         except Exception as e:
             return web.Response(text=f"Error deleting file: {str(e)}", status=500)
+

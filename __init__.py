@@ -1,5 +1,4 @@
-import os
-
+import os    
 # Import the node classes
 from .santodan_nodes.random_lora_nodes import *
 from .santodan_nodes.wildcard import *
@@ -26,26 +25,38 @@ promptListTemplate.initialize_prompt_list_routes()
 
 # --- Node Mappings for ComfyUI ---
 NODE_CLASS_MAPPINGS = {
+    #from random_lora_nodes.py
     "RandomLoRACustom": RandomLoRACustom,
     "RandomLoRAFolder": RandomLoRAFolder,
     "LoRACachePreloader": LoRACachePreloader,
     "ExcludedLoras": ExcludedLoras,
     "ExtractAndApplyLoRAs": ExtractAndApplyLoRAs,
+    #from wildcard.py
     "WildcardManager": WildcardManager,
+    #from promptListTemplate.py
     "PromptListWithTemplates": PromptListWithTemplates,
+    #from shutdownNode.py
     "SaveWorkflowAndShutdown": SaveWorkflowAndShutdown,
+    #from utils.py
     "SplitBatchWithPrefix": SplitBatchWithPrefix,
+    "ListSelector": ListSelector,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
+    #from random_lora_nodes.py
     "RandomLoRACustom": "Random LoRA Selector",
     "RandomLoRAFolder": "Random LoRA Folder Selector",
     "LoRACachePreloader": "LoRA Cache Preloader",
     "ExcludedLoras": "Excluded Loras",
     "ExtractAndApplyLoRAs": "Extract And Apply LoRAs",
+    #from wildcard.py
     "WildcardManager": "Wildcard Manager",
+    #from promptListTemplate.py
     "PromptListWithTemplates": "PromptList w/ Template",
+    #from shutdownNode.py
     "Save Workflow & Shutdown": "SaveWorkflowAndShutdown",
+    #from utils.py
     "SplitBatchWithPrefix": "Split Batch With Prefix",
+    "ListSelector": "List Selector",
 }
 WEB_DIRECTORY = "web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]

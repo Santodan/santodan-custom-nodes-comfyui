@@ -1,5 +1,8 @@
 import time
 import torch
+import random
+from nodes import interrupt_processing
+from cozy_comfyui.api import parse_reset, comfy_api_post
 from datetime import datetime
 
 class AnyType(str):
@@ -88,3 +91,83 @@ class SplitBatchWithPrefix:
         self.current_global_index += 1
 
         return (img, name)
+
+class ListSelector:
+    # This class-level dictionary correctly maintains the state for each node instance.
+    current_indices = {}
+
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt_list": ("LIST",),
+                "mode": (["all_run", "selected", "increment"],),
+                "index": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "stop_at_end": ("BOOLEAN", {"default": False, "label_on": "HALT QUEUE AT END", "label_off": "LOOP AT END"}),
+                # --- MODIFIED WIDGET ---
+                # This is now a boolean toggle switch. It's more intuitive for a one-shot action.
+                "reset_counter": ("BOOLEAN", {"default": False, "label_on": "RESET ON NEXT RUN", "label_off": "NORMAL RUN"})
+            },
+            "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO", "unique_id": "UNIQUE_ID"},
+        }
+
+    RETURN_TYPES = ("STRING", "INT")
+    RETURN_NAMES = ("prompt", "current_index")
+    OUTPUT_IS_LIST = (True, False)
+    FUNCTION = "run"
+    CATEGORY = "Santodan/Prompt"
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        return float("NaN") # Always run this node to check for state changes.
+
+    def run(self, prompt_list, mode, index, stop_at_end, reset_counter, unique_id, prompt, extra_pnginfo):
+        node_id = unique_id
+        
+        if node_id not in self.current_indices:
+            self.current_indices[node_id] = 0
+
+        # --- UPDATED RESET LOGIC ---
+        # The Python code only needs to check if the toggle is True.
+        # The JavaScript will be responsible for turning it back to False.
+        if reset_counter:
+            print(f"💡 [ListSelector ID: {node_id}] Counter has been reset to 0 by the reset toggle.")
+            self.current_indices[node_id] = 0
+        
+        current_index = self.current_indices[node_id]
+
+        # The rest of the function logic remains the same...
+        if not prompt_list:
+            return ([""], 0)
+
+        list_size = len(prompt_list)
+
+        if mode == "all_run":
+            return (prompt_list, list_size)
+        
+        elif mode == "selected":
+            self.current_indices[node_id] = index
+            if 0 <= index < list_size:
+                return ([prompt_list[index]], index)
+            else:
+                return ([""], index)
+
+        elif mode == "increment":
+            if current_index >= list_size:
+                if stop_at_end:
+                    print(f"🛑 [ListSelector ID: {node_id}] Queue is halted. Reset to start again.")
+                    interrupt_processing()
+                    return ([""], current_index)
+                else:
+                    print(f"💡 [ListSelector ID: {node_id}] Reached end of list. Looping back to start.")
+                    current_index = 0
+            
+            idx_to_use = current_index
+            prompt_to_return = [prompt_list[idx_to_use]]
+            
+            self.current_indices[node_id] = current_index + 1
+            
+            return (prompt_to_return, idx_to_use)
