@@ -2,6 +2,8 @@ import os
 import server
 from aiohttp import web
 from werkzeug.utils import secure_filename
+import json
+from . import utils 
 
 def get_safe_wildcard_path(root, user_filename):
     """
@@ -113,3 +115,55 @@ def initialize_routes(wildcards_path):
         except Exception as e:
             return web.Response(text=f"Error deleting file: {str(e)}", status=500)
 
+def initialize_prompt_list_routes():
+    print("✅ [Santodan Nodes] Initializing PromptListTemplate routes...")
+
+    # This is the class from your other file, so we need to import it
+    from .utils import PromptListWithTemplates
+
+    def get_template_dir():
+        # We need to recreate this helper function here
+        base_path = os.path.dirname(os.path.realpath(utils.__file__))
+        return os.path.join(base_path, "prompt_list_templates")
+
+    @server.PromptServer.instance.routes.post("/santodan/save_prompt_list")
+    async def save_prompt_list_template(request):
+        try:
+            data = await request.json()
+            filename = data.get("filename")
+            prompts = data.get("prompts")
+            if not filename or not prompts: return web.Response(status=400, text="...")
+            if not filename.endswith(".json"): filename += ".json"
+            file_path = os.path.join(get_template_dir(), filename)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f: json.dump(prompts, f, indent=4)
+            return web.json_response({"status": "success", "message": f"Saved to {filename}"})
+        except Exception as e: return web.Response(status=500, text=str(e))
+
+    @server.PromptServer.instance.routes.post("/santodan/delete_prompt_list")
+    async def delete_prompt_list_template(request):
+        try:
+            data = await request.json()
+            filename = data.get("filename")
+            if not filename or filename == "None": return web.Response(status=400, text="...")
+            file_path = os.path.join(get_template_dir(), filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                return web.json_response({"status": "success", "message": f"Deleted {filename}"})
+            else: return web.Response(status=404, text="Template not found.")
+        except Exception as e: return web.Response(status=500, text=str(e))
+
+    @server.PromptServer.instance.routes.get("/santodan/view_prompt_list")
+    async def view_prompt_list_template(request):
+        filename = request.query.get("filename")
+        if not filename or filename == "None": return web.Response(status=400, text="...")
+        file_path = os.path.join(get_template_dir(), filename)
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f: data = json.load(f)
+            return web.json_response(data)
+        else: return web.Response(status=404, text="Template not found.")
+
+    @server.PromptServer.instance.routes.get("/santodan/get_prompt_lists")
+    async def get_prompt_list_templates(request):
+        files = PromptListWithTemplates.get_template_files()
+        return web.json_response(["None"] + files)

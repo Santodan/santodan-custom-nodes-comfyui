@@ -2,8 +2,6 @@ import os
 # Import the node classes
 from .santodan_nodes.random_lora_nodes import *
 from .santodan_nodes.wildcard import *
-from .santodan_nodes.promptListTemplate import *
-from .santodan_nodes import promptListTemplate
 from .santodan_nodes.shutdownNode import *
 from .santodan_nodes.utils import *
 # Import our new API routes module
@@ -21,7 +19,7 @@ if not os.path.exists(wildcards_path):
 # --- Initialize API Routes ---
 # This single line replaces all the previous API endpoint code
 server_routes.initialize_routes(wildcards_path)
-promptListTemplate.initialize_prompt_list_routes()
+server_routes.initialize_prompt_list_routes()
 
 # --- Node Mappings for ComfyUI ---
 NODE_CLASS_MAPPINGS = {
@@ -50,13 +48,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ExtractAndApplyLoRAs": "Extract And Apply LoRAs",
     #from wildcard.py
     "WildcardManager": "Wildcard Manager",
-    #from promptListTemplate.py
-    "PromptListWithTemplates": "PromptList w/ Template",
     #from shutdownNode.py
     "Save Workflow & Shutdown": "SaveWorkflowAndShutdown",
     #from utils.py
     "SplitBatchWithPrefix": "Split Batch With Prefix",
     "ListSelector": "List Selector",
+    "PromptListWithTemplates": "PromptList w/ Template",
 }
 WEB_DIRECTORY = "web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]

@@ -4,6 +4,9 @@ import random
 from nodes import interrupt_processing
 from cozy_comfyui.api import parse_reset, comfy_api_post
 from datetime import datetime
+import os
+import json
+import folder_paths
 
 class AnyType(str):
     def __ne__(self, __value: object) -> bool:
@@ -171,3 +174,66 @@ class ListSelector:
             self.current_indices[node_id] = current_index + 1
             
             return (prompt_to_return, idx_to_use)
+        
+class PromptListWithTemplates:
+    # ... (the entire class definition remains exactly the same as before) ...
+    """
+    A ComfyUI node to create a list of prompts, with the ability to save, 
+    load, and delete the list as a template via an associated JavaScript file.
+    """
+    
+    TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "prompt_list_templates")
+
+    def __init__(self):
+        os.makedirs(self.TEMPLATE_DIR, exist_ok=True)
+
+    @classmethod
+    def get_template_files(cls):
+        if not os.path.exists(cls.TEMPLATE_DIR):
+            return []
+        template_files = []
+        for root, _, files in os.walk(cls.TEMPLATE_DIR):
+            for file in files:
+                if file.endswith(".json"):
+                    relative_path = os.path.relpath(os.path.join(root, file), cls.TEMPLATE_DIR)
+                    template_files.append(relative_path)
+        return sorted(template_files)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        os.makedirs(cls.TEMPLATE_DIR, exist_ok=True)
+        return {
+            "required": {
+                "prompt_1": ("STRING", {"multiline": True, "default": ""}),
+                "prompt_2": ("STRING", {"multiline": True, "default": ""}),
+                "prompt_3": ("STRING", {"multiline": True, "default": ""}),
+                "prompt_4": ("STRING", {"multiline": True, "default": ""}),
+                "prompt_5": ("STRING", {"multiline": True, "default": ""}),
+                "template_file": (["None"] + cls.get_template_files(),),
+                "save_filename": ("STRING", {"default": "", "placeholder": "subfolder/template_name.json"}),
+            },
+            "optional": { "optional_prompt_list": ("LIST",) }
+        }
+
+    RETURN_TYPES = ("LIST", "STRING")
+    RETURN_NAMES = ("prompt_list", "prompt_strings")
+    OUTPUT_IS_LIST = (False, True)
+    FUNCTION = "run"
+    CATEGORY = "Santodan/Prompt"
+
+    def run(self, prompt_1, prompt_2, prompt_3, prompt_4, prompt_5, template_file, save_filename, optional_prompt_list=None):
+        prompts = []
+        if optional_prompt_list:
+            prompts.extend(optional_prompt_list)
+        
+        source_prompts = [prompt_1, prompt_2, prompt_3, prompt_4, prompt_5]
+        for p in source_prompts:
+            if isinstance(p, str) and p.strip() != '':
+                prompts.append(p)
+                
+        return (prompts, prompts)
+
+
+# --- API Endpoints for JavaScript interaction ---
+def get_template_dir():
+    return os.path.join(os.path.dirname(__file__), "prompt_list_templates")
