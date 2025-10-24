@@ -34,7 +34,6 @@ def get_safe_wildcard_path(root, user_filename):
         
     return full_path
 
-# This function will be called from __init__.py to set up all the web routes.
 def initialize_routes(wildcards_path):
     #print("[Santodan Nodes] Initializing wildcard API routes...")
 
@@ -116,7 +115,7 @@ def initialize_routes(wildcards_path):
             return web.Response(text=f"Error deleting file: {str(e)}", status=500)
 
 def initialize_prompt_list_routes():
-    print("✅ [Santodan Nodes] Initializing PromptListTemplate routes...")
+    #print("✅ [Santodan Nodes] Initializing PromptListTemplate routes...")
 
     # This is the class from your other file, so we need to import it
     from .utils import PromptListWithTemplates

@@ -130,18 +130,23 @@ This helps avoid performance issues with large LoRA libraries.
 ---
 
 ## 🔄 Other Nodes:
-### PromptList w/ Template"
+### PromptList w/ Template
 Based on the PromptList from Impact, but this one will be able to save, edit and delete templates
 
-### SaveWorkflowAndShutdown"
+### SaveWorkflowAndShutdown
 A simple node to shutdown the PC at the end of the workflow if there are no more jobs in the queue.
 There is a delay input, if you want to interrupt, cancel comfyui's process
 
-### Split Batch With Prefix"
+### Split Batch With Prefix
 A node to to transform a batch of images into a list.
 It will also ask for a prefix and an index, so it will generate a prompt list.
 The purpose is to save each image from a batch with a corresponding index.
 Example, you have a 5 images batch, you run the node and will output the images as a list and a prompt string of the index+Prefix ( example 0-SDXL_, 1-SDXL_, 2-SDXL_, 3-SDXL_, 4-SDXL_)
+
+
+### Model Assembler
+A Model to combine the model checkpoint, unet loader, clip loader and vae loader.
+Created so I don't have to change connections when testing full models and fp8 versions
 
 ---
 

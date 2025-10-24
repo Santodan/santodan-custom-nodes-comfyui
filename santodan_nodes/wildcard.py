@@ -48,10 +48,10 @@ class WildcardManager:
         }
 
     # --- MODIFIED FOR NEW OUTPUT ---
-    RETURN_TYPES = ("STRING", "STRING",)
-    RETURN_NAMES = ("processed_text", "all_wildcards",)
+    RETURN_TYPES = ("STRING", "STRING", "STRING",)
+    RETURN_NAMES = ("processed_text", "processed_string", "all_wildcards",)
     # The first output is a list of prompts, the second is a single string containing all wildcard names
-    OUTPUT_IS_LIST = (True, False,) 
+    OUTPUT_IS_LIST = (True, False, False,) 
     # -----------------------------
 
     FUNCTION = "process_text"
@@ -203,10 +203,11 @@ Tooltips:
         # ----------------------------------------------
         
         # --- MODIFIED RETURN FOR PREVIEW AND NEW OUTPUT ---
+        processed_string_output = "\n".join(processed_texts)
         return {
             "ui": {
                 "preview_list": processed_texts,
                 "processed_text_preview": ["\n".join(processed_texts)]
             }, 
-            "result": (processed_texts, all_wildcards_output_str,)
+            "result": (processed_texts, processed_string_output, all_wildcards_output_str,)
         }

@@ -31,13 +31,13 @@ NODE_CLASS_MAPPINGS = {
     "ExtractAndApplyLoRAs": ExtractAndApplyLoRAs,
     #from wildcard.py
     "WildcardManager": WildcardManager,
-    #from promptListTemplate.py
-    "PromptListWithTemplates": PromptListWithTemplates,
     #from shutdownNode.py
     "SaveWorkflowAndShutdown": SaveWorkflowAndShutdown,
     #from utils.py
+    "PromptListWithTemplates": PromptListWithTemplates,
     "SplitBatchWithPrefix": SplitBatchWithPrefix,
     "ListSelector": ListSelector,
+    "ModelAssembler": ModelAssembler,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     #from random_lora_nodes.py
@@ -54,6 +54,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "SplitBatchWithPrefix": "Split Batch With Prefix",
     "ListSelector": "List Selector",
     "PromptListWithTemplates": "PromptList w/ Template",
+    "ModelAssembler": "Model Assembler",
 }
 WEB_DIRECTORY = "web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]

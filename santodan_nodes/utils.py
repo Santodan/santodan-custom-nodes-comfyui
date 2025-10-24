@@ -7,6 +7,8 @@ from datetime import datetime
 import os
 import json
 import folder_paths
+import comfy.sd
+import comfy.utils
 
 class AnyType(str):
     def __ne__(self, __value: object) -> bool:
@@ -233,7 +235,105 @@ class PromptListWithTemplates:
                 
         return (prompts, prompts)
 
-
 # --- API Endpoints for JavaScript interaction ---
 def get_template_dir():
     return os.path.join(os.path.dirname(__file__), "prompt_list_templates")
+
+class ModelAssembler:
+    @classmethod
+    def INPUT_TYPES(s):
+        checkpoints_list = folder_paths.get_filename_list("checkpoints")
+        clips_list = ["None"] + folder_paths.get_filename_list("text_encoders")
+        vaes_list = folder_paths.get_filename_list("vae")
+        
+        # A comprehensive list of clip types from ComfyUI's loaders
+        clip_types = [
+            "stable_diffusion", "sdxl", "sd3", "stable_cascade", "flux", 
+            "hunyuan_video", "hidream", "hunyuan_image", "stable_audio", 
+            "mochi", "ltxv", "pixart", "cosmos", "lumina2", "wan", 
+            "chroma", "ace", "omnigen2", "qwen_image"
+        ]
+
+        return {
+            "required": {
+                "load_mode": (["full_checkpoint", "separate_components"],),
+
+                # Inputs for 'full_checkpoint' mode
+                "ckpt_name": (checkpoints_list,),
+
+                # Inputs for 'separate_components' mode
+                "base_model": (checkpoints_list,),
+                "weight_dtype": (["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"],),
+                "vae_model": (vaes_list,),
+                "clip_type": (clip_types, {"tooltip": "Select the appropriate type for your CLIP model(s). E.g., 'sdxl' for a LoRA/HiRA pair."}),
+                "device": (["default", "cpu"], {"advanced": True}),
+                "clip_model_1": (clips_list,),
+            },
+            "optional": {
+                "clip_model_2": (clips_list, {"default": "None"}),
+                "clip_model_3": (clips_list, {"default": "None"}),
+            }
+        }
+
+    RETURN_TYPES = ("MODEL", "CLIP", "VAE")
+    FUNCTION = "load_and_assemble"
+    CATEGORY = "loaders"
+
+    def load_and_assemble(self, load_mode, ckpt_name, base_model, weight_dtype, vae_model, clip_type, clip_model_1, clip_model_2, clip_model_3, device="default"):
+        
+        if load_mode == "full_checkpoint":
+            ckpt_path = folder_paths.get_full_path("checkpoints", ckpt_name)
+            if not ckpt_path: raise FileNotFoundError(f"Checkpoint file not found: {ckpt_name}")
+            
+            model, clip, vae = comfy.sd.load_checkpoint_guess_config(
+                ckpt_path, output_vae=True, output_clip=True,
+                embedding_directory=folder_paths.get_folder_paths("embeddings")
+            )[:3]
+            return (model, clip, vae)
+
+        # --- Separate Components Mode ---
+
+        # 1. Load UNet with correct data type
+        unet_options = {}
+        if weight_dtype == "fp8_e4m3fn":
+            unet_options["dtype"] = torch.float8_e4m3fn
+        elif weight_dtype == "fp8_e4m3fn_fast":
+            unet_options["dtype"] = torch.float8_e4m3fn
+            unet_options["fp8_optimizations"] = True
+        elif weight_dtype == "fp8_e5m2":
+            unet_options["dtype"] = torch.float8_e5m2
+        
+        base_model_path = folder_paths.get_full_path("checkpoints", base_model)
+        if not base_model_path: raise FileNotFoundError(f"Base model file not found: {base_model}")
+        model = comfy.sd.load_diffusion_model(base_model_path, model_options=unet_options)
+
+        # 2. Load VAE
+        vae_path = folder_paths.get_full_path("vae", vae_model)
+        if not vae_path: raise FileNotFoundError(f"VAE file not found: {vae_model}")
+        sd = comfy.utils.load_torch_file(vae_path)
+        vae = comfy.sd.VAE(sd=sd)
+
+        # 3. Load CLIP(s) using the correct type and device logic
+        clip_paths = []
+        for clip_name in [clip_model_1, clip_model_2, clip_model_3]:
+            if clip_name and clip_name != "None":
+                path = folder_paths.get_full_path("text_encoders", clip_name)
+                if not path: raise FileNotFoundError(f"CLIP file not found: {clip_name}")
+                clip_paths.append(path)
+        
+        if not clip_paths: raise ValueError("At least one CLIP model must be selected.")
+
+        clip_options = {}
+        if device == "cpu":
+            clip_options["load_device"] = clip_options["offload_device"] = torch.device("cpu")
+
+        clip_target_type = getattr(comfy.sd.CLIPType, clip_type.upper(), comfy.sd.CLIPType.STABLE_DIFFUSION)
+        
+        clip = comfy.sd.load_clip(
+            ckpt_paths=clip_paths,
+            embedding_directory=folder_paths.get_folder_paths("embeddings"),
+            clip_type=clip_target_type,
+            model_options=clip_options
+        )
+
+        return (model, clip, vae)
