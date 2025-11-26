@@ -99,10 +99,10 @@ Tooltips:
 
     def _process_syntax(self, text, rng):
         """Recursively processes the full syntax."""
-        quantifier_pattern = re.compile(r'(\d+)#(__[\w\./\-\\]+__)')
+        quantifier_pattern = re.compile(r'(\d+)#(__[\w\s\./\-\\]+__)')
+        wildcard_pattern = re.compile(r'__([\w\s\./\-\\]+)__')
+        always_random_pattern = re.compile(r'__\*([\w\s\./\-\\]+)__')
         inner_prompt_pattern = re.compile(r'\{([^{}]*)\}')
-        wildcard_pattern = re.compile(r'__([\w\./\-\\]+)__')
-        always_random_pattern = re.compile(r'__\*([\w\./\-\\]+)__')
 
         def expand_quantifier(match):
             count = int(match.group(1))

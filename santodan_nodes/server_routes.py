@@ -16,7 +16,9 @@ def get_safe_wildcard_path(root, user_filename):
     parts = user_filename.split('/')
     
     # Sanitize each part of the path to prevent things like '..'
-    safe_parts = [secure_filename(part) for part in parts if part and part not in ['.', '..']]
+    safe_parts = [part for part in parts if part and part not in ['.', '..']]
+
+    print(f"DEBUG: Resulting parts '{safe_parts}'")
     
     if not safe_parts:
         return None # Invalid filename (e.g., '/', '../', etc.)
