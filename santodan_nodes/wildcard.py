@@ -99,9 +99,9 @@ Tooltips:
 
     def _process_syntax(self, text, rng):
         """Recursively processes the full syntax."""
-        quantifier_pattern = re.compile(r'(\d+)#(__[\w\s\./\-\\]+__)')
-        wildcard_pattern = re.compile(r'__([\w\s\./\-\\]+)__')
-        always_random_pattern = re.compile(r'__\*([\w\s\./\-\\]+)__')
+        quantifier_pattern = re.compile(r'(\d+)#(__[\w\s\./\-\\]+?__)')
+        wildcard_pattern = re.compile(r'__([\w\s\./\-\\]+?)__')
+        always_random_pattern = re.compile(r'__\*([\w\s\./\-\\]+?)__')
         inner_prompt_pattern = re.compile(r'\{([^{}]*)\}')
 
         def expand_quantifier(match):
