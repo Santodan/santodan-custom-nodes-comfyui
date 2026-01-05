@@ -2,12 +2,16 @@ import os
 import sys
 import time
 import folder_paths
-import random
+import random  as py_random
 from .lora_info import get_lora_info
 import re
-from PIL import Image, PngImagePlugin
+from PIL import Image, PngImagePlugin  
 import nodes  # ComfyUI’s built-in
 from pathlib import Path
+
+import comfy.sd
+import comfy.utils
+import comfy.model_management
 
 sys.path.append(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
@@ -208,6 +212,124 @@ class RandomLoRACustom:
 
         return (output_loras, trigger_words_string, help_text)
 
+class RandomLoRACustomModel:
+    @classmethod
+    def INPUT_TYPES(cls):
+        loras = ["None"] + folder_paths.get_filename_list("loras")
+        inputs = {
+            "required": {
+                "model": ("MODEL",),
+                "exclusive_mode": (["Off", "On"],),
+                "refresh_loras": ("BOOLEAN", {"default": False}),
+                "lora_count": ("INT", {"default": 0, "min": 0, "max": 10}),
+            },
+            "optional": {
+                "extra_trigger_words": ("STRING", {"forceInput": True, "default": ""}),
+            }
+        }
+
+        for i in range(1, 11):
+            inputs["required"][f"lora_name_{i}"] = (loras,)
+            inputs["required"][f"min_strength_{i}"] = (
+                "FLOAT", {"default": 0.6, "min": -10.0, "max": 10.0, "step": 0.01})
+            inputs["required"][f"max_strength_{i}"] = (
+                "FLOAT", {"default": 1.0, "min": -10.0, "max": 10.0, "step": 0.01})
+
+        return inputs
+
+    RETURN_TYPES = ("MODEL", "STRING", "STRING")
+    RETURN_NAMES = ("MODEL", "applied_loras", "trigger_words")
+    FUNCTION = "apply_custom_random_loras"
+    CATEGORY = "Santodan/LoRA"
+    _last_refresh_state = {}
+
+    @classmethod
+    def IS_CHANGED(cls, refresh_loras=False, **kwargs):
+        # Create a unique key based on all input selections
+        node_key = str(kwargs)
+        import uuid
+        if refresh_loras or node_key not in cls._last_refresh_state:
+            new_id = str(uuid.uuid4())
+            cls._last_refresh_state[node_key] = new_id
+            return new_id
+        return cls._last_refresh_state[node_key]
+
+    def apply_custom_random_loras(
+        self, model, exclusive_mode, lora_count,
+        refresh_loras=False, extra_trigger_words="", **kwargs
+    ):
+        import time
+
+        # 1. Setup RNG
+        if refresh_loras:
+            seed = py_random.randrange(1 << 30)
+        else:
+            # Hash the names of the selected LoRAs to keep randomization consistent
+            # unless a different LoRA is picked in the dropdowns.
+            seed_data = [kwargs.get(f"lora_name_{i}") for i in range(1, 11)]
+            seed_data.append(exclusive_mode)
+            seed_data.append(lora_count)
+            seed = hash(str(seed_data)) % (2**32)
+        
+        rng = py_random.Random(seed)
+
+        # 2. Identify Active LoRAs (inputs 1-10 that aren't "None")
+        indices = []
+        for i in range(1, 11):
+            name = kwargs.get(f"lora_name_{i}")
+            if name and name != "None":
+                indices.append(i)
+
+        if not indices:
+            return (model, "None", extra_trigger_words)
+
+        # 3. Determine which LoRAs to use
+        selected_indices = []
+        if exclusive_mode == "On":
+            selected_indices = [rng.choice(indices)]
+        else:
+            if lora_count == 0:
+                # Pick a random number of the available LoRAs
+                n = rng.randint(1, len(indices))
+                selected_indices = rng.sample(indices, n)
+            else:
+                # Pick exactly lora_count (clamped to available)
+                n = min(lora_count, len(indices))
+                selected_indices = rng.sample(indices, n)
+
+        # 4. Apply selected LoRAs
+        current_model = model
+        applied_names = []
+        trigger_words_list = []
+        lora_loader = nodes.LoraLoader()
+
+        for idx in selected_indices:
+            name = kwargs.get(f"lora_name_{idx}")
+            min_s = kwargs.get(f"min_strength_{idx}", 0.6)
+            max_s = kwargs.get(f"max_strength_{idx}", 1.0)
+            
+            # Randomize strength
+            strength = round(rng.uniform(min_s, max_s), 3)
+            
+            # Apply to Model (Clip=None, Strength_Clip=0)
+            current_model, _ = lora_loader.load_lora(current_model, None, name, strength, 0)
+            
+            applied_names.append(f"{os.path.basename(name)} ({strength})")
+            
+            # Get triggers
+            _, trained_words, _, _ = get_lora_info(name)
+            if trained_words:
+                trigger_words_list.append(trained_words)
+
+        # 5. Build outputs
+        if extra_trigger_words:
+            trigger_words_list.append(extra_trigger_words)
+        
+        applied_loras_str = ", ".join(applied_names)
+        trigger_words_str = ", ".join(filter(None, trigger_words_list))
+
+        return (current_model, applied_loras_str, trigger_words_str)
+
 class RandomLoRAFolder:
     _lora_info_cache = {}
     _last_refresh_state = {}
@@ -391,6 +513,166 @@ class RandomLoRAFolder:
         )
 
         return output_loras, trigger_words_string, help_text
+
+class RandomLoRAFolderModel:
+    _lora_info_cache = {}
+    _last_refresh_state = {}
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        # 1. Get all LoRAs Comfy knows about
+        lora_list = folder_paths.get_filename_list("loras")
+        
+        # 2. Extract subfolders by normalizing to forward slashes
+        subfolders = set()
+        for l in lora_list:
+            normalized = l.replace("\\", "/")
+            if "/" in normalized:
+                # Get everything except the filename
+                parts = normalized.split('/')
+                subfolders.add("/".join(parts[:-1]))
+        
+        # 3. Create dropdown list
+        folder_options = ["None", "[root]"] + sorted(list(subfolders))
+
+        inputs = {
+            "required": {
+                "model": ("MODEL",),
+                "exclusive_mode": (["Off", "On"],),
+                "refresh_loras": ("BOOLEAN", {"default": False}),
+                "force_refresh_cache": ("BOOLEAN", {"default": False}),
+            },
+            "optional": {
+                "extra_trigger_words": ("STRING", {"forceInput": True, "default": ""}),
+                "exclude_loras_from_node": ("LORA_LIST",),
+            }
+        }
+        
+        for i in range(1, 11):
+            inputs["optional"][f"folder_path_{i}"] = (folder_options,)
+            inputs["optional"][f"lora_count_{i}"] = ("INT", {"default": 1, "min": 1, "max": 99, "step": 1})
+            inputs["optional"][f"min_strength_{i}"] = ("FLOAT", {"default": 0.6, "min": -10.0, "max": 10.0, "step": 0.01})
+            inputs["optional"][f"max_strength_{i}"] = ("FLOAT", {"default": 1.0, "min": -10.0, "max": 10.0, "step": 0.01})
+            
+        return inputs
+
+    RETURN_TYPES = ("MODEL", "STRING", "STRING")
+    RETURN_NAMES = ("MODEL", "applied_loras", "trigger_words")
+    FUNCTION = "apply_random_loras"
+    CATEGORY = "Santodan/LoRA"
+
+    @classmethod
+    def IS_CHANGED(cls, refresh_loras=False, force_refresh_cache=False, **kwargs):
+        if force_refresh_cache:
+            cls._lora_info_cache.clear()
+        
+        # Simple key based on folder choices and exclusive mode
+        node_key = str(kwargs.get("exclusive_mode"))
+        for i in range(1, 11):
+            node_key += f"{kwargs.get(f'folder_path_{i}')}{kwargs.get(f'lora_count_{i}')}"
+
+        import uuid
+        if refresh_loras or node_key not in cls._last_refresh_state:
+            new_id = str(uuid.uuid4())
+            cls._last_refresh_state[node_key] = new_id
+            return new_id
+        return cls._last_refresh_state[node_key]
+
+    def get_cached_lora_info(self, lora_path):
+        if lora_path not in self._lora_info_cache:
+            try:
+                self._lora_info_cache[lora_path] = get_lora_info(lora_path)
+            except:
+                self._lora_info_cache[lora_path] = (None, None, None, None)
+        return self._lora_info_cache[lora_path]
+
+    def pick_random_loras_from_folder(self, selected_folder, count=1, rng=None, exclude_list=None):
+        all_loras = folder_paths.get_filename_list("loras")
+        files_in_folder = []
+
+        for lora in all_loras:
+            # Normalize for comparison
+            normalized_lora = lora.replace("\\", "/")
+            
+            # Determine folder of this file
+            if "/" in normalized_lora:
+                lora_folder = "/".join(normalized_lora.split('/')[:-1])
+            else:
+                lora_folder = "[root]"
+
+            if lora_folder == selected_folder:
+                # We store the ORIGINAL path 'lora' to pass to the loader
+                files_in_folder.append(lora)
+
+        # Apply exclusions (checking against basename)
+        if exclude_list:
+            exclude_set = {os.path.basename(f).strip() for f in exclude_list if f and f != "None"}
+            files_in_folder = [f for f in files_in_folder if os.path.basename(f).strip() not in exclude_set]
+
+        if not files_in_folder:
+            return []
+
+        actual_count = min(count, len(files_in_folder))
+        rng = rng or py_random
+        return rng.sample(files_in_folder, actual_count)
+
+    def apply_random_loras(self, model, exclusive_mode, refresh_loras=False, force_refresh_cache=False, extra_trigger_words="", exclude_loras_from_node=None, **kwargs):
+        # 1. Setup Selection RNG
+        if refresh_loras:
+            selection_rng = py_random.Random(py_random.randrange(1 << 30))
+        else:
+            selection_seed_data = [kwargs.get(f"folder_path_{i}") for i in range(1, 11)]
+            selection_rng = py_random.Random(hash(str(selection_seed_data)) % (2**32))
+
+        # 2. Collect Candidates
+        valid_entries = []
+        for i in range(1, 11):
+            folder = kwargs.get(f"folder_path_{i}", "None")
+            if folder and folder != "None":
+                count = kwargs.get(f"lora_count_{i}", 1)
+                min_s = kwargs.get(f"min_strength_{i}", 0.6)
+                max_s = kwargs.get(f"max_strength_{i}", 1.0)
+                
+                picked = self.pick_random_loras_from_folder(folder, count, rng=selection_rng, exclude_list=exclude_loras_from_node)
+                for lora_name in picked:
+                    valid_entries.append((lora_name, min_s, max_s))
+
+        if not valid_entries:
+            return (model, "None Selected", extra_trigger_words)
+
+        # 3. Handle Mode
+        selected_entries = [selection_rng.choice(valid_entries)] if exclusive_mode == "On" else valid_entries
+
+        # 4. Apply
+        if refresh_loras:
+            strength_rng = py_random.Random(py_random.randrange(1 << 30))
+        else:
+            strength_rng = py_random.Random(hash(str(selected_entries)) % (2**32))
+
+        current_model = model
+        applied_names = []
+        trigger_words_list = []
+        lora_loader = nodes.LoraLoader()
+
+        for lora_name, min_s, max_s in selected_entries:
+            strength = round(strength_rng.uniform(min_s, max_s), 3)
+            
+            # Using the official ComfyUI LoraLoader.load_lora method
+            current_model, _ = lora_loader.load_lora(current_model, None, lora_name, strength, 0)
+            
+            applied_names.append(f"{os.path.basename(lora_name)} ({strength})")
+            
+            _, trained_words, _, _ = self.get_cached_lora_info(lora_name)
+            if trained_words:
+                trigger_words_list.append(trained_words)
+
+        if extra_trigger_words:
+            trigger_words_list.append(extra_trigger_words)
+        
+        applied_loras_str = ", ".join(applied_names)
+        trigger_words_str = ", ".join(filter(None, trigger_words_list))
+
+        return (current_model, applied_loras_str, trigger_words_str)
 
 class ExcludedLoras:
     @classmethod

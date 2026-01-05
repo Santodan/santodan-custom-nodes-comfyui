@@ -25,7 +25,9 @@ server_routes.initialize_prompt_list_routes()
 NODE_CLASS_MAPPINGS = {
     #from random_lora_nodes.py
     "RandomLoRACustom": RandomLoRACustom,
+    "RandomLoRACustomModel": RandomLoRACustomModel,
     "RandomLoRAFolder": RandomLoRAFolder,
+    "RandomLoRAFolderModel": RandomLoRAFolderModel,
     "LoRACachePreloader": LoRACachePreloader,
     "ExcludedLoras": ExcludedLoras,
     "ExtractAndApplyLoRAs": ExtractAndApplyLoRAs,
@@ -43,6 +45,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     #from random_lora_nodes.py
     "RandomLoRACustom": "Random LoRA Selector",
     "RandomLoRAFolder": "Random LoRA Folder Selector",
+    "RandomLoRACustomModel": "Random LoRA Selector to Model Selector",
+    "RandomLoRAFolderModel": "Random LoRA Folder to Model Selector",
     "LoRACachePreloader": "LoRA Cache Preloader",
     "ExcludedLoras": "Excluded Loras",
     "ExtractAndApplyLoRAs": "Extract And Apply LoRAs",
