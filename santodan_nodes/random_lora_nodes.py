@@ -314,7 +314,8 @@ class RandomLoRACustomModel:
             # Apply to Model (Clip=None, Strength_Clip=0)
             current_model, _ = lora_loader.load_lora(current_model, None, name, strength, 0)
             
-            applied_names.append(f"{os.path.basename(name)} ({strength})")
+            #applied_names.append(f"{os.path.basename(name)} ({strength})")
+            applied_names.append(f"{name} ({strength})")
             
             # Get triggers
             _, trained_words, _, _ = get_lora_info(name)
@@ -327,6 +328,19 @@ class RandomLoRACustomModel:
         
         applied_loras_str = ", ".join(applied_names)
         trigger_words_str = ", ".join(filter(None, trigger_words_list))
+
+        # --- ADD THIS BLOCK ---
+        self.applied_lora_metadata = []
+        # Re-parse or track the data used
+        for name_str in applied_names:
+            # name_str is "path/lora.safetensors (0.85)"
+            match = re.search(r"(.+?)\s\(([-+]?\d*\.?\d+)\)", name_str)
+            if match:
+                self.applied_lora_metadata.append({
+                    "name": match.group(1).strip(),
+                    "strength": float(match.group(2))
+                })
+        # -----------------------
 
         return (current_model, applied_loras_str, trigger_words_str)
 
@@ -660,7 +674,8 @@ class RandomLoRAFolderModel:
             # Using the official ComfyUI LoraLoader.load_lora method
             current_model, _ = lora_loader.load_lora(current_model, None, lora_name, strength, 0)
             
-            applied_names.append(f"{os.path.basename(lora_name)} ({strength})")
+            #applied_names.append(f"{os.path.basename(lora_name)} ({strength})")
+            applied_names.append(f"{lora_name} ({strength})")
             
             _, trained_words, _, _ = self.get_cached_lora_info(lora_name)
             if trained_words:
@@ -671,6 +686,17 @@ class RandomLoRAFolderModel:
         
         applied_loras_str = ", ".join(applied_names)
         trigger_words_str = ", ".join(filter(None, trigger_words_list))
+
+        # --- ADD THIS BLOCK ---
+        self.applied_lora_metadata = []
+        for name_str in applied_names:
+            match = re.search(r"(.+?)\s\(([-+]?\d*\.?\d+)\)", name_str)
+            if match:
+                self.applied_lora_metadata.append({
+                    "name": match.group(1).strip(),
+                    "strength": float(match.group(2))
+                })
+        # -----------------------
 
         return (current_model, applied_loras_str, trigger_words_str)
 
@@ -784,3 +810,32 @@ class LoRACachePreloader:
         final_cache_size = len(RandomLoRAFolder._lora_info_cache)
         status = f"Preloaded {processed_count}/{total_files} LoRAs from {folder_path} in {elapsed_time:.1f}s (errors: {error_count})"
         return (status, final_cache_size)
+
+
+class LoraMetadataHub:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ("MODEL",),
+            },
+            "optional": {
+                # Connect the 'applied_loras' output from your Random nodes here
+                "loras_1": ("STRING", {"forceInput": True}),
+                "loras_2": ("STRING", {"forceInput": True}),
+                "loras_3": ("STRING", {"forceInput": True}),
+                "extra_metadata_text": ("STRING", {"forceInput": True}),
+            }
+        }
+
+    RETURN_TYPES = ("MODEL", "STRING")
+    RETURN_NAMES = ("MODEL", "combined_loras")
+    FUNCTION = "process"
+    CATEGORY = "Santodan/Metadata"
+
+    def process(self, model, **kwargs):
+        # Combine all input LoRA strings into one for easy viewing
+        lora_inputs = [kwargs.get(f"loras_{i}", "") for i in range(1, 4)]
+        extra = kwargs.get("extra_metadata_text", "")
+        combined = ", ".join(filter(None, lora_inputs + [extra]))
+        return (model, combined)

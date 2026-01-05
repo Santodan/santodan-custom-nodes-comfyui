@@ -31,6 +31,7 @@ NODE_CLASS_MAPPINGS = {
     "LoRACachePreloader": LoRACachePreloader,
     "ExcludedLoras": ExcludedLoras,
     "ExtractAndApplyLoRAs": ExtractAndApplyLoRAs,
+    "LoraMetadataHub": LoraMetadataHub,
     #from wildcard.py
     "WildcardManager": WildcardManager,
     #from shutdownNode.py
@@ -50,6 +51,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LoRACachePreloader": "LoRA Cache Preloader",
     "ExcludedLoras": "Excluded Loras",
     "ExtractAndApplyLoRAs": "Extract And Apply LoRAs",
+    "LoraMetadataHub": "LoRA Metadata Hub",
     #from wildcard.py
     "WildcardManager": "Wildcard Manager",
     #from shutdownNode.py
