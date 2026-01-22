@@ -4,35 +4,31 @@ import re
 import folder_paths
 
 class WildcardManager:
-    """
-    A node to manage and process text with wildcards and dynamic prompts.
-    Supports ImpactWildcardProcessor syntax including nesting, weights, multi-select,
-    quantifiers, and comments.
-    """
+    global_sync_index = 0
+
     def __init__(self):
-        # Path is now defined in the class method for consistency
         pass
 
     @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        # Force re-run to prevent caching of sequential/unseeded random results
+        return float("NaN")
+
+    @classmethod
     def get_wildcard_files(cls):
-        """Gets a list of wildcard files from the wildcards folder and its subfolders."""
         wildcards_path = os.path.join(folder_paths.base_path, "wildcards")
         if not os.path.exists(wildcards_path):
             return ["[Create New]"]
-        
         file_list = []
         try:
             for root, _, files in os.walk(wildcards_path):
                 for file in files:
                     if file.endswith('.txt'):
-                        # Get the relative path from the wildcards_path
                         relative_path = os.path.relpath(os.path.join(root, file), wildcards_path)
-                        # Remove the .txt extension and normalize path separators for display
                         wildcard_name = os.path.splitext(relative_path)[0].replace('\\', '/')
                         file_list.append(wildcard_name)
             return ["[Create New]"] + sorted(file_list, key=str.lower)
         except Exception as e:
-            print(f"WildcardManager Error: Could not read wildcards folder. {e}")
             return ["[Create New]", "(Error reading folder)"]
 
     @classmethod
@@ -40,22 +36,19 @@ class WildcardManager:
         return {
             "required": {
                 "wildcards_list": (cls.get_wildcard_files(),),
-                "text": ("STRING", {"multiline": True, "default": "A {1$$cute|big|small} {3::cat|dog} is sitting on the __object__."}),
+                "text": ("STRING", {"multiline": True, "default": "A {*cute|big|small} {+cat|dog} is sitting on the __object__."}),
                 "processing_mode": (["entire text as one","line by line"],),
-                "processed_text_preview": ("STRING", {"multiline": True, "default": "", "output": True}), # Mark as output
+                "processed_text_preview": ("STRING", {"multiline": True, "default": "", "output": True}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             },
         }
 
-    # --- MODIFIED FOR NEW OUTPUT ---
     RETURN_TYPES = ("STRING", "STRING", "STRING",)
     RETURN_NAMES = ("processed_text", "processed_string", "all_wildcards",)
-    # The first output is a list of prompts, the second is a single string containing all wildcard names
     OUTPUT_IS_LIST = (True, False, False,) 
-    # -----------------------------
-
     FUNCTION = "process_text"
     CATEGORY = "Santodan/Wildcard"
+
     DESCRIPTION = """
 # Wildcard Manager Node
 
@@ -70,144 +63,162 @@ Tooltips:
     - Delete Selected: Asks for confirmation and then permanently deletes the wildcard file selected in the dropdown.
 
 ### ADDITIONAL SYNTAX:
-    - Dynamic Prompts: Randomly select one item from a list.
-        Example: {blue|red|green} will randomly become blue, red, or green.
-    - Wildcards: Randomly select a line from a .txt file in your ComfyUI/wildcards directory.
-        Example: __person__ or __subfolder/person__ will pull a random line from person.txt.
-    - Nesting: Combine syntaxes for complex results.
-        Example: {a|{b|__c__}}
-    - Randomize: Randomize the wildcard independently from the seed.
-        Example: __*person__ always pulls a random line from person.txt, regardless of the seed.
-    - Weighted Choices: Give certain options a higher chance of being selected.
-        Example: {5::red|2::green|blue} (red is most likely, blue is least).
-    - Multi-Select: Select multiple items from a list, with a custom separator.
-        Example: {1-2$$ and $$cat|dog|bird} could become cat, dog, bird, cat and dog, cat and bird, or dog and bird.
-    - Quantifiers: Repeat a wildcard multiple times to create a list for multi-selection.
-        Example: {2$$, $$3#__colors__} expands to select 2 items from __colors__|__colors__|__colors__.
-    - Comments: Lines starting with # are ignored, both in the node's text field and within wildcard files.
+    - Randomize (Unseeded): Use '*' to bypass the seed. Changes every generation.
+        Example Wildcard: __*person__
+        Example Dynamic: {*red|blue|green}
+    - Sequential: Use '+' to select items in order across different queue runs.
+        Example Wildcard: __+person__
+        Example Dynamic: {+red|blue|green}
+    - Standard Random (Seeded): Results stay the same if the seed is fixed.
+        Example: __person__ or {red|blue|green}
+    - Weighted Choices: {5::red|2::green|blue} (Seeded/Unseeded random only).
+    - Multi-Select: {1-2$$ and $$cat|dog|bird}.
+    - Comments: Lines starting with # are ignored.
 """
 
     def _get_wildcard_options(self, wildcard_name):
-        """Loads and caches options from a wildcard file, supporting subdirectories."""
         wildcards_path = os.path.join(folder_paths.base_path, "wildcards")
-        # os.path.join handles both Windows and Linux separators correctly
         wildcard_file_path = os.path.join(wildcards_path, f"{wildcard_name}.txt")
         if os.path.exists(wildcard_file_path):
             with open(wildcard_file_path, 'r', encoding='utf-8') as f:
                 return [line for line in (l.strip() for l in f) if line and not line.startswith('#')]
         return []
 
-    def _process_syntax(self, text, rng):
-        """Recursively processes the full syntax."""
+    def _parse_range(self, range_str, opt_count, rng):
+        """Parses '1-2' or '2' into an actual integer."""
+        if not range_str:
+            return 1
+        try:
+            if '-' in range_str:
+                parts = range_str.split('-')
+                low = int(parts[0]) if parts[0] else 1
+                high = int(parts[1]) if parts[1] else opt_count
+                return rng.randint(low, high)
+            else:
+                return int(range_str)
+        except ValueError:
+            return 1
+
+    def _process_syntax(self, text, seeded_rng):
+        # 1. Expand Quantifiers first: '3#__test__' -> '__test__|__test__|__test__'
         quantifier_pattern = re.compile(r'(\d+)#(__[\w\s\./\-\\]+?__)')
-        wildcard_pattern = re.compile(r'__([\w\s\./\-\\]+?)__')
-        always_random_pattern = re.compile(r'__\*([\w\s\./\-\\]+?)__')
-        inner_prompt_pattern = re.compile(r'\{([^{}]*)\}')
-
         def expand_quantifier(match):
-            count = int(match.group(1))
-            wildcard = match.group(2)
-            return '|'.join([wildcard] * count)
-        text, count = quantifier_pattern.subn(expand_quantifier, text)
-        while count > 0:
-            text, count = quantifier_pattern.subn(expand_quantifier, text)
+            count, wc = int(match.group(1)), match.group(2)
+            return '|'.join([wc] * count)
+        
+        while quantifier_pattern.search(text):
+            text = quantifier_pattern.sub(expand_quantifier, text)
 
-        while '__*' in text:
-            match = always_random_pattern.search(text)
+        # 2. Handle Dynamic Prompts {prefix}{content}
+        # This regex handles the inner-most brackets first
+        dynamic_pattern = re.compile(r'\{([*+]?)([^{}]+)\}')
+        
+        while True:
+            match = dynamic_pattern.search(text)
             if not match: break
-            wildcard_name = match.group(1)
-            options = self._get_wildcard_options(wildcard_name)
-            if options:
-                # Create a new, unseeded random object for a truly random choice
-                truly_random_rng = random.Random()
-                choice = self._process_syntax(truly_random_rng.choice(options), rng) # still process nested syntax
-                text = text[:match.start()] + choice + text[match.end():]
-            else:
-                print(f"Warning: Wildcard '{wildcard_name}' not found or is empty.")
-                text = text[:match.start()] + text[match.end():].lstrip()
-
-        while '{' in text and '}' in text:
-            match = inner_prompt_pattern.search(text)
-            if not match: break
-            content, replacement = match.group(1), ""
+            
+            prefix, content = match.group(1), match.group(2)
+            current_rng = random.Random() if prefix == '*' else seeded_rng
+            use_sequential = (prefix == '+')
+            
+            replacement = ""
             if '$$' in content:
+                # Multi-select: {range$$sep$$options} or {range$$options}
                 parts = content.split('$$')
-                range_str, options_str = parts[0], parts[1]
-                separator = ", "
-                if len(parts) > 2: separator, options_str = parts[1], parts[2]
-                options = [self._process_syntax(opt, rng) for opt in options_str.split('|')]
-                min_count, max_count = 1, 1
-                if '-' in range_str:
-                    min_str, max_str = range_str.split('-', 1)
-                    min_count = int(min_str) if min_str else 1
-                    max_count = int(max_str) if max_str else len(options)
-                elif range_str:
-                    count_val = int(range_str)
-                    if count_val < 0: min_count, max_count = 1, abs(count_val)
-                    else: min_count = max_count = count_val
-                num_to_select = min(rng.randint(min_count, max_count), len(options))
-                selected = rng.sample(options, num_to_select)
-                replacement = separator.join(selected)
+                if len(parts) == 3:
+                    range_str, sep, opt_str = parts[0], parts[1], parts[2]
+                else:
+                    range_str, sep, opt_str = parts[0], ", ", parts[1]
+                
+                options = opt_str.split('|')
+                
+                if use_sequential:
+                    # Sequential multi-select: start at global index and take 1
+                    choice_idx = WildcardManager.global_sync_index % len(options)
+                    selected = [options[choice_idx]]
+                else:
+                    num_to_select = self._parse_range(range_str, len(options), current_rng)
+                    num_to_select = max(0, min(num_to_select, len(options)))
+                    selected = current_rng.sample(options, num_to_select)
+                
+                # Process selected options recursively
+                processed = [self._process_syntax(s, seeded_rng) for s in selected]
+                replacement = sep.join(processed)
             else:
+                # Standard choice: {a|b|c}
                 options = content.split('|')
-                weights, choices = [], []
-                for option in options:
-                    if '::' in option:
-                        try:
-                            weight_str, choice = option.split('::', 1)
-                            weights.append(float(weight_str)); choices.append(choice)
-                        except ValueError:
-                            weights.append(1.0); choices.append(option)
-                    else:
-                        weights.append(1.0); choices.append(option)
-                processed_choices = [self._process_syntax(c, rng) for c in choices]
-                replacement = rng.choices(processed_choices, weights=weights, k=1)[0]
+                if use_sequential:
+                    idx = WildcardManager.global_sync_index % len(options)
+                    choice = options[idx]
+                else:
+                    # Weights support
+                    weights = []
+                    clean_options = []
+                    for opt in options:
+                        if '::' in opt:
+                            w_str, c = opt.split('::', 1)
+                            weights.append(float(w_str))
+                            clean_options.append(c)
+                        else:
+                            weights.append(1.0)
+                            clean_options.append(opt)
+                    choice = current_rng.choices(clean_options, weights=weights, k=1)[0]
+                
+                replacement = self._process_syntax(choice, seeded_rng)
+            
             text = text[:match.start()] + replacement + text[match.end():]
 
-        while '__' in text:
+        # 3. Handle Wildcards __prefix__name__
+        wildcard_pattern = re.compile(r'__([*+]?)([\w\s\./\-\\]+?)__')
+        while True:
             match = wildcard_pattern.search(text)
             if not match: break
-            wildcard_name = match.group(1)
-            options = self._get_wildcard_options(wildcard_name)
+            
+            prefix, wc_name = match.group(1), match.group(2)
+            options = self._get_wildcard_options(wc_name)
+            
             if options:
-                choice = self._process_syntax(rng.choice(options), rng)
-                text = text[:match.start()] + choice + text[match.end():]
+                if prefix == '+':
+                    choice = options[WildcardManager.global_sync_index % len(options)]
+                elif prefix == '*':
+                    choice = random.Random().choice(options)
+                else:
+                    choice = seeded_rng.choice(options)
+                
+                replacement = self._process_syntax(choice, seeded_rng)
+                text = text[:match.start()] + replacement + text[match.end():]
             else:
-                print(f"Warning: Wildcard '{wildcard_name}' not found or is empty."); text = text[:match.start()] + text[match.end():].lstrip()
+                text = text[:match.start()] + text[match.end():].lstrip()
+        
         return text
 
-    # --- CORRECTED FUNCTION SIGNATURE ---
-    # The order of parameters now exactly matches the order in INPUT_TYPES.
     def process_text(self, wildcards_list, text, processing_mode, processed_text_preview, seed):
         if isinstance(text, list): text = "\n".join(text)
-        rng = random.Random(seed); processed_texts = []
+        rng = random.Random(seed)
+        processed_texts = []
+        
+        input_lines = text.split('\n')
         if processing_mode == "entire text as one":
-            lines = text.split('\n')
-            non_comment_lines = [l for l in lines if not l.strip().startswith('#')]
-            cleaned_text_block = "\n".join(non_comment_lines).strip()
-            if cleaned_text_block:
-                processed_texts.append(self._process_syntax(cleaned_text_block, rng))
+            clean_text = "\n".join([l for l in input_lines if not l.strip().startswith('#')]).strip()
+            if clean_text:
+                processed_texts.append(self._process_syntax(clean_text, rng))
         else:
-            for line in text.split('\n'):
-                stripped_line = line.strip()
-                if not stripped_line or stripped_line.startswith('#'): continue
-                processed_texts.append(self._process_syntax(stripped_line, rng))
+            for line in input_lines:
+                if not line.strip() or line.strip().startswith('#'): continue
+                processed_texts.append(self._process_syntax(line.strip(), rng))
+
+        # Update counter for next run
+        WildcardManager.global_sync_index += 1
+
         if not processed_texts: processed_texts.append("")
+        all_wc = self.get_wildcard_files()
+        all_wc_str = "\n".join([f"__{w}__" for w in all_wc if w not in ["[Create New]", "(Error reading folder)"]])
+        processed_string = "\n".join(processed_texts)
         
-        # --- NEW CODE TO GET WILDCARD LIST FOR OUTPUT ---
-        all_wc_files = self.get_wildcard_files()
-        # Filter out the non-file entries used by the dropdown
-        actual_wc_files = [w for w in all_wc_files if w not in ["[Create New]", "(Error reading folder)"]]
-        # Format as a single newline-separated string for the output
-        all_wildcards_output_str = "\n".join([f"__{w}__" for w in actual_wc_files])
-        # ----------------------------------------------
-        
-        # --- MODIFIED RETURN FOR PREVIEW AND NEW OUTPUT ---
-        processed_string_output = "\n".join(processed_texts)
         return {
             "ui": {
                 "preview_list": processed_texts,
-                "processed_text_preview": ["\n".join(processed_texts)]
+                "processed_text_preview": [processed_string]
             }, 
-            "result": (processed_texts, processed_string_output, all_wildcards_output_str,)
+            "result": (processed_texts, processed_string, all_wc_str,)
         }

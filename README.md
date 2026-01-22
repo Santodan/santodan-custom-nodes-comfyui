@@ -20,8 +20,12 @@ Reading the files from the default ComfyUI folder ( `ComfyUi/Wildcards` )
     -   Example: `__person__` will pull a random line from `person.txt`.
 -   **Nesting:** Combine syntaxes for complex results.
     -   Example: `{a|{b|__c__}}`
--   **Randomize: Randomize** the wildcard independently from the seed.
-        Example: __*person__ always pulls a random line from person.txt, regardless of the seed.
+-   **Randomize**: Randomize the wildcard independently from the seed.
+    -   Example: `__*person__` w ill always pulls a random line from person.txt, regardless of the seed.
+    -   Example: `{*red|blue|green}` always pulls a random item from the list, regardless of the seed.
+-   **Sequential**: Use `+` to select items in order across different queue runs.
+    - Example Wildcard: `__+person__`
+    - Example Dynamic: `{+red|blue|green}`
 -   **Weighted Choices:** Give certain options a higher chance of being selected.
     -   Example: `{5::red|2::green|blue}` (red is most likely, blue is least).
 -   **Multi-Select:** Select multiple items from a list, with a custom separator.
