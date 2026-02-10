@@ -4,17 +4,18 @@ from .santodan_nodes.random_lora_nodes import *
 from .santodan_nodes.wildcard import *
 from .santodan_nodes.shutdownNode import *
 from .santodan_nodes.utils import *
+import folder_paths
 # Import our new API routes module
 from .santodan_nodes import server_routes
 
 # --- Setup Paths ---
-comfy_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+comfy_path = folder_paths.base_path
 wildcards_path = os.path.join(comfy_path, "wildcards")
 
 # --- Initialize Wildcards Directory ---
 if not os.path.exists(wildcards_path):
-    print("Santodan Nodes: Wildcards directory not found, creating it.")
-    os.makedirs(wildcards_path)
+    print(f"Santodan Nodes: Wildcards directory not found at {wildcards_path}, creating it.")
+    os.makedirs(wildcards_path, exist_ok=True)
 
 # --- Initialize API Routes ---
 # This single line replaces all the previous API endpoint code
