@@ -16,7 +16,7 @@ document.head.appendChild($el("style", { textContent: style }));
 class WildcardEditorDialog extends ComfyDialog {
 	constructor() { super(); this.element.classList.add("santodan-wildcard-editor-dialog"); }
 	show(filename, content, saveCallback) {
-		this.title = `Editing: ${filename}.txt`;
+		this.title = `Editing: ${filename}`;
         const initialContent = (content === undefined || content === null) ? "" : content;
 		this.textElement = $el("textarea");
         this.textElement.value = initialContent;
@@ -78,7 +78,7 @@ app.registerExtension({
                         console.log("Wildcard saved:", filename);
                         await refreshWildcardList(this);
                         wildcardsDropdown.value = filename;
-                    } catch (error) { console.error("Failed to save wildcard:", error); alert(`Error saving ${filename}.txt: ${error.message}`); }
+                    } catch (error) { console.error("Failed to save wildcard:", error); alert(`Error saving ${filename}: ${error.message}`); }
                 };
 
                 const handleInsert = () => {
@@ -98,7 +98,7 @@ app.registerExtension({
                 const handleEditOrCreate = async () => {
                     let filename = wildcardsDropdown.value;
                     if (filename === "[Create New]") {
-                        const newFilename = prompt("Enter a name for the new wildcard file (e.g., 'new_wildcard' or 'subfolder/new_wildcard'):");
+                        const newFilename = prompt("Enter a name for the new file (e.g., 'new_wildcard' or 'subfolder/new_wildcard', it can also support.yaml files):");
                         if (newFilename && newFilename.trim()) { new WildcardEditorDialog().show(newFilename.trim(), "", saveCallback); }
                         return;
                     }
@@ -110,13 +110,13 @@ app.registerExtension({
                         if (data.error) { throw new Error(data.error); }
                         if (data.content === undefined) { throw new Error("API response did not contain the 'content' key."); }
 						new WildcardEditorDialog().show(filename, data.content, saveCallback);
-					} catch (error) { console.error("Failed to load wildcard content:", error); alert(`Error loading ${filename}.txt: ${error.message}`); }
+					} catch (error) { console.error("Failed to load wildcard content:", error); alert(`Error loading ${filename}: ${error.message}`); }
                 };
 
 				const deleteWildcard = async () => {
                     const filename = wildcardsDropdown.value;
 					if (!filename || filename === "[Create New]" || filename.startsWith("(")) { return alert("Please select a valid wildcard file to delete."); }
-                    if (confirm(`Are you sure you want to permanently delete "${filename}.txt"?\nThis cannot be undone.`)) {
+                    if (confirm(`Are you sure you want to permanently delete "${filename}"?\nThis cannot be undone.`)) {
                         try {
                             const response = await api.fetchApi("/santodan/wildcard-delete", {
                                 method: "DELETE", headers: { "Content-Type": "application/json" },
@@ -125,7 +125,7 @@ app.registerExtension({
                             if (!response.ok) throw new Error(await response.text());
                             console.log("Wildcard deleted:", filename);
                             await refreshWildcardList(this);
-                        } catch (error) { console.error("Failed to delete wildcard:", error); alert(`Error deleting ${filename}.txt: ${error.message}`); }
+                        } catch (error) { console.error("Failed to delete wildcard:", error); alert(`Error deleting ${filename}: ${error.message}`); }
                     }
                 };
 

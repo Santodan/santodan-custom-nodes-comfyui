@@ -2,6 +2,7 @@ import os
 import random
 import re
 import folder_paths
+import yaml
 
 class WildcardManager:
     global_sync_index = 0
@@ -28,13 +29,13 @@ class WildcardManager:
         try:
             for root, _, files in os.walk(wildcards_path):
                 for file in files:
-                    if file.endswith('.txt'):
-                        relative_path = os.path.relpath(os.path.join(root, file), wildcards_path)
-                        wildcard_name = os.path.splitext(relative_path)[0].replace('\\', '/')
-                        file_list.append(wildcard_name)
+                    if file.lower().endswith(('.txt', '.yaml', '.yml')):
+                        rel = os.path.relpath(os.path.join(root, file), wildcards_path)
+                        name = rel.replace('\\', '/')
+                        if name.lower().endswith('.txt'): name = name[:-4]
+                        file_list.append(name)
             return ["[Create New]"] + sorted(file_list, key=str.lower)
-        except Exception as e:
-            return ["[Create New]", "(Error reading folder)"]
+        except Exception: return ["[Create New]", "(Error)"]
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -55,14 +56,36 @@ class WildcardManager:
     CATEGORY = "Santodan/Wildcard"
 
     def _get_wildcard_options(self, wildcard_name):
+        import yaml
         wildcards_path = self.get_wildcards_path()
+        
+        # 1. Check if it's a YAML path (e.g., styles.yaml/lighting)
+        if ".yaml" in wildcard_name.lower() or ".yml" in wildcard_name.lower():
+            parts = wildcard_name.split('/')
+            file_path, yaml_keys = None, []
+            for i, part in enumerate(parts):
+                if part.lower().endswith(('.yaml', '.yml')):
+                    file_path = os.path.join(wildcards_path, *parts[:i+1])
+                    yaml_keys = parts[i+1:]
+                    break
+            
+            if file_path and os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        data = yaml.safe_load(f)
+                    for key in yaml_keys:
+                        data = data.get(key) if isinstance(data, dict) else None
+                    if isinstance(data, list): return [str(x) for x in data]
+                except Exception: pass
+            return []
+
+        # 2. Default logic: It's a .txt file (user just typed __test__)
+        # We manually add the .txt here because the UI sends the name without it
         wildcard_file_path = os.path.join(wildcards_path, f"{wildcard_name}.txt")
         if os.path.exists(wildcard_file_path):
             with open(wildcard_file_path, 'r', encoding='utf-8') as f:
                 return [line for line in (l.strip() for l in f) if line and not line.startswith('#')]
         return []
-
-    # ... (rest of the class remains the same) ...
     
     def _parse_range(self, range_str, opt_count, rng):
         if not range_str: return 1

@@ -6,7 +6,8 @@ This is a group of nodes that I've build to achieve my goals.
 
 # 🪄 Wildcard Manager Node
 
-The **Wildcard Manager** is a powerful dynamic prompt and wildcard processor. It allows you to create complex, randomized text prompts using a flexible syntax that supports nesting, weights, multi-selection, and more. It is designed to be compatible with the popular syntax used in the Impact Pack's Wildcard processor, making it easy to adopt existing prompts and wildcards.
+The **Wildcard Manager** is a powerful dynamic prompt and wildcard processor. It allows you to create complex, randomized text prompts using a flexible syntax that supports nesting, weights, multi-selection, and more. It is designed to be compatible with the popular syntax used in the Impact Pack's Wildcard processor, making it easy to adopt existing prompts and wildcards.<br>
+It supports both .txt ( default one, not needing the extension) and YAML files ( both .yaml and .yml)
 
 Reading the files from the default ComfyUI folder ( `ComfyUi/Wildcards` )
 
@@ -69,13 +70,13 @@ The node includes buttons for managing your wildcard files directly from the Com
 
 ## 🎲 Randomize LoRAs Node
 
-The **Randomize LoRAs** node lets you experiment by randomly selecting LoRAs from a list and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed.
+The **Randomize LoRAs** node lets you experiment by randomly selecting LoRAs from a list and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed.<br>
 There are two nodes for this, the `Random LoRA Selector` and the `Random LoRA Selector to Model Selector`, the difference between them is that one uses the `lora_stack` and the other one applies the loras directly to the model.
 
 ## 🎲 Random LoRA Folder Selector
 
-The **Random LoRA Folder Selector** node lets you experiment by randomly selecting LoRAs from a doler and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed and how many to be selected by folder.  
-Additionally, if the LoRA includes trigger words (via `lora-info`), these are extracted and returned for use in prompts.
+The **Random LoRA Folder Selector** node lets you experiment by randomly selecting LoRAs from a doler and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed and how many to be selected by folder.  <br>
+Additionally, if the LoRA includes trigger words (via `lora-info`), these are extracted and returned for use in prompts.<br>
 There are two nodes for this, the `Random LoRA Folder Selector` and the `Random LoRA Folder to Model Selector`, the difference between them is that one uses the `lora_stack` and the other one applies the loras directly to the model.
 
 > ✅ Compatible with [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) by using the `💊 CR Apply LoRA Stack` from [Suzie1 / Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes)
@@ -88,15 +89,15 @@ The **Excluded Loras** node lets you select 5 lroas to be excluded in the **Rand
 
 ## 🎲⛏️ Extract And Apply LoRAs
 
-The **Extract And Apply LoRAs** node lets you extract the LoRAs that were saved using the [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) node and apply them to a workflow.
-This was created so I could try to generate better enhancement workflow but with the same loras and weight as the initial one.
-I would recommend use the [SDBatchLoader](https://github.com/receyuki/comfyui-prompt-reader-node) to load multiple images at the same time and connecting the output to the path field in my node
+The **Extract And Apply LoRAs** node lets you extract the LoRAs that were saved using the [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) node and apply them to a workflow.<br>
+This was created so I could try to generate better enhancement workflow but with the same loras and weight as the initial one.<br>
+I would recommend use the [SDBatchLoader](https://github.com/receyuki/comfyui-prompt-reader-node) to load multiple images at the same time and connecting the output to the path field in my node<br>
 
 ## 🎲📦 LoRA Cache Preloader
 
-This is a node to have the information for the loras preloaded into the `db.json`  
-You can select the folder that you want to run it.  
-This way you don't need to wait for the information to be gathered when running the other two nodes
+This is a node to have the information for the loras preloaded into the `db.json`  <br>
+You can select the folder that you want to run it.<br>
+This way you don't need to wait for the information to be gathered when running the other two nodes<br>
 
 ---
 
@@ -142,21 +143,21 @@ This helps avoid performance issues with large LoRA libraries.
 Based on the PromptList from Impact, but this one will be able to save, edit and delete templates
 
 ### SaveWorkflowAndShutdown
-A simple node to shutdown the PC at the end of the workflow if there are no more jobs in the queue.
+A simple node to shutdown the PC at the end of the workflow if there are no more jobs in the queue.<br>
 There is a delay input, if you want to interrupt, cancel comfyui's process
 
 ### Split Batch With Prefix
-A node to to transform a batch of images into a list.
-It will also ask for a prefix and an index, so it will generate a prompt list.
-The purpose is to save each image from a batch with a corresponding index.
+A node to to transform a batch of images into a list.<br>
+It will also ask for a prefix and an index, so it will generate a prompt list.<br>
+The purpose is to save each image from a batch with a corresponding index.<br>
 Example, you have a 5 images batch, you run the node and will output the images as a list and a prompt string of the index+Prefix ( example 0-SDXL_, 1-SDXL_, 2-SDXL_, 3-SDXL_, 4-SDXL_)
 
 ### Model Assembler
-A Model to combine the model checkpoint, unet loader, clip loader and vae loader.
+A Model to combine the model checkpoint, unet loader, clip loader and vae loader.<br>
 Created so I don't have to change connections when testing full models and fp8 versions
 
 ### LoRA Metadata Hub
-Node used to add the metadata from the loras to the image metadata together with the [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) node.
+Node used to add the metadata from the loras to the image metadata together with the [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) node.<br>
 You may need to add/edit the `modules/defs/ext/SantodanNodes.py` file to add the following code - [SantodanNodes.py](https://github.com/Santodan/comfyui_image_metadata_extension/blob/9fce1d69d72d3c75c1fc46c1b4f2ab50f2c46016/modules/defs/ext/SantodanNodes.py) - since the node OP hasn't updated the node for a couple of months, or just my whole node
 
 ---
