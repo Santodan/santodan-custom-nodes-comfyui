@@ -1,8 +1,6 @@
 # Santodan Custom Nodes for ComfyUI
 
-This is a standalone ComfyUI custom node for **randomizing LoRAs** with adjustable strength and support for automatic trigger word injection.
-
-> ✅ Compatible with [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) by using the `💊 CR Apply LoRA Stack` from [Suzie1 / Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes)
+This is a group of nodes that I've build to achieve my goals.
 
 ---
 
@@ -72,11 +70,17 @@ The node includes buttons for managing your wildcard files directly from the Com
 ## 🎲 Randomize LoRAs Node
 
 The **Randomize LoRAs** node lets you experiment by randomly selecting LoRAs from a list and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed.
+There are two nodes for this, the `Random LoRA Selector` and the `Random LoRA Selector to Model Selector`, the difference between them is that one uses the `lora_stack` and the other one applies the loras directly to the model.
 
 ## 🎲 Random LoRA Folder Selector
 
 The **Random LoRA Folder Selector** node lets you experiment by randomly selecting LoRAs from a doler and assigning randomized strengths. You can enable exclusive selection (just one LoRA) or allow multiple LoRAs to be mixed and how many to be selected by folder.  
 Additionally, if the LoRA includes trigger words (via `lora-info`), these are extracted and returned for use in prompts.
+There are two nodes for this, the `Random LoRA Folder Selector` and the `Random LoRA Folder to Model Selector`, the difference between them is that one uses the `lora_stack` and the other one applies the loras directly to the model.
+
+> ✅ Compatible with [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) by using the `💊 CR Apply LoRA Stack` from [Suzie1 / Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes)
+
+> ✅ Compatible with [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) by using the [`LoRA Metadata Hub`](https://github.com/Santodan/santodan-custom-nodes-comfyui/?tab=readme-ov-file#lora-metadata-hub)
 
 ## 🎲🚫 Excluded Loras
 
@@ -147,10 +151,13 @@ It will also ask for a prefix and an index, so it will generate a prompt list.
 The purpose is to save each image from a batch with a corresponding index.
 Example, you have a 5 images batch, you run the node and will output the images as a list and a prompt string of the index+Prefix ( example 0-SDXL_, 1-SDXL_, 2-SDXL_, 3-SDXL_, 4-SDXL_)
 
-
 ### Model Assembler
 A Model to combine the model checkpoint, unet loader, clip loader and vae loader.
 Created so I don't have to change connections when testing full models and fp8 versions
+
+### LoRA Metadata Hub
+Node used to add the metadata from the loras to the image metadata together with the [comfyui_image_metadata_extension](https://github.com/edelvarden/comfyui_image_metadata_extension) node.
+You may need to add/edit the `modules/defs/ext/SantodanNodes.py` file to add the following code - [SantodanNodes.py](https://github.com/Santodan/comfyui_image_metadata_extension/blob/9fce1d69d72d3c75c1fc46c1b4f2ab50f2c46016/modules/defs/ext/SantodanNodes.py) - since the node OP hasn't updated the node for a couple of months, or just my whole node
 
 ---
 
