@@ -2,14 +2,66 @@ import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import { ComfyDialog, $el } from "/scripts/ui.js";
 
-// Changed version to v22 to confirm subfolder fix is loaded
-console.log("✅ Santodan Wildcard Manager JS loaded (v22 - Subfolder Support).");
+
+console.log("✅ Santodan Wildcard Manager JS loaded.");
 
 const style = `
-.santodan-preview-container { width: 100%; max-height: 300px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 4px; padding: 8px; margin-top: 4px; background-color: var(--bg-color, #1a1a1a); border: 1px solid var(--border-color, #444); border-radius: 4px; box-sizing: border-box; }
-.santodan-preview-box { width: 100%; padding: 8px; background-color: var(--input-bg-color, #222); border-radius: 4px; font-family: monospace; font-size: 12px; color: var(--input-text-color, #ccc); box-sizing: border-box; white-space: pre-wrap; word-break: break-all; margin: 0; }
-.santodan-wildcard-editor-dialog .comfy-modal-content { display: flex; flex-direction: column; height: 90%; }
-.santodan-wildcard-editor-dialog textarea { width: 100%; flex-grow: 1; min-height: 300px; }
+.santodan-preview-container {
+    width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden !important;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    margin-top: 4px;
+    background-color: var(--bg-color, #1a1a1a);
+    border: 1px solid var(--border-color, #444);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.santodan-preview-box {
+    width: 100%;
+    margin: 0;
+    padding: 8px 10px;
+    background-color: var(--input-bg-color, #222);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--input-text-color, #ccc);
+    box-sizing: border-box;
+    
+    /* Core wrapping rules - override defaults */
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;     /* softer than break-all */
+    
+    /* Prevent horizontal scroll at all costs */
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+}
+
+/* Optional: make long words break more gracefully if needed */
+.santodan-preview-box code, 
+.santodan-preview-box span {
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
+}
+
+/* Editor textarea (for completeness, if you still want to fix it too) */
+.santodan-wildcard-editor-dialog textarea {
+    width: 100% !important;
+    flex-grow: 1;
+    min-height: 300px;
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+    resize: vertical;
+}
 `;
 document.head.appendChild($el("style", { textContent: style }));
 
@@ -60,12 +112,52 @@ app.registerExtension({
 						previewWidget.inputEl.style.display = "none";
 						previewWidget.inputEl.parentNode.appendChild(previewContainer);
 					}
+
+					// ────────────────────────────────────────────────
+					// NEW: Sync font size from a native ComfyUI textarea
+					const syncPreviewFontSize = () => {
+						// Look for any existing multiline input on the canvas
+						const nativeTextarea = document.querySelector(
+							'.comfy-multiline-input, textarea.multiline-widget, .comfyui-prompt-textarea'
+						);
+
+						if (nativeTextarea) {
+							const computedStyle = window.getComputedStyle(nativeTextarea);
+							const fontSize = computedStyle.fontSize;  // e.g. "14px"
+
+							// Apply to container (affects all children unless overridden)
+							if (this.previewContainer) {
+								this.previewContainer.style.fontSize = fontSize;
+							}
+
+							// Also apply directly to each preview box for safety
+							document.querySelectorAll('.santodan-preview-box').forEach(box => {
+								box.style.fontSize = fontSize;
+							});
+
+							console.log("[WildcardManager] Preview font size synced to:", fontSize);
+						}
+					};
+
+					// Run it once right after attaching
+					syncPreviewFontSize();
+
+					// Optional: re-sync if user changes setting while node is open
+					// (MutationObserver on body is lightweight and catches most UI updates)
+					const observer = new MutationObserver(syncPreviewFontSize);
+					observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+
+					// Cleanup when node is removed (optional but good practice)
+					const originalOnRemoved = this.onRemoved;
+					this.onRemoved = () => {
+						observer.disconnect();
+						originalOnRemoved?.apply(this);
+					};
 				}, 0);
 				
 				const wildcardsDropdown = this.widgets.find((w) => w.name === "wildcards_list");
 				const textWidget = this.widgets.find((w) => w.name === "text");
 
-                // We no longer need the dropdown callback for insertion.
 				wildcardsDropdown.callback = () => {};
 
 				const saveCallback = async (filename, content) => {
@@ -129,42 +221,24 @@ app.registerExtension({
                     }
                 };
 
-                // ========================================================================
-                //                       START OF CORRECTED CODE
-                // ========================================================================
-
-                // 1. Add the buttons as usual. They will be appended to the end of the node by default.
-                // We store references to the created widget objects.
                 const insertButton = this.addWidget("button", "Insert Selected", "insert", handleInsert);
                 const editButton = this.addWidget("button", "Edit/Create Wildcard", "edit_create", handleEditOrCreate);
                 const deleteButton = this.addWidget("button", "Delete Selected", "delete", deleteWildcard);
 
-                // 2. Re-order the widgets array. This controls serialization and widget order logic.
                 const dropdownIndex = this.widgets.findIndex((w) => w.name === "wildcards_list");
                 if (dropdownIndex !== -1) {
-                    // Remove the last three widgets (our buttons) from the array.
                     const buttons = this.widgets.splice(this.widgets.length - 3, 3);
-                    
-                    // Re-insert the buttons array after the dropdown.
                     this.widgets.splice(dropdownIndex + 1, 0, ...buttons);
                 }
 
-                // 3. Re-order the actual DOM elements to match the new widget order.
-                // We use the `.element` property, which is the reliable container for any widget.
                 const dropdownEl = wildcardsDropdown.element; 
                 if (dropdownEl) {
-                    // We use .after() to insert the button elements after the dropdown's element.
-                    // The order of arguments here determines the visual order.
                     dropdownEl.after(
                         insertButton.element, 
                         editButton.element, 
                         deleteButton.element
                     );
                 }
-
-                // ========================================================================
-                //                        END OF CORRECTED CODE
-                // ========================================================================
 			};
 
 			const onExecuted = nodeType.prototype.onExecuted;
