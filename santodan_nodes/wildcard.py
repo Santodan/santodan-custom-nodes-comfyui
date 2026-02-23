@@ -6,6 +6,7 @@ import yaml
 
 class WildcardManager:
     global_sync_index = 0
+    OUTPUT_NODE = True
 
     def __init__(self):
         pass
@@ -42,11 +43,11 @@ class WildcardManager:
         return {
             "required": {
                 "wildcards_list": (cls.get_wildcard_files(),),
-                "text": ("STRING", {"multiline": True, "default": "A {*cute|big|small} {+cat|dog} is sitting on the __object__."}),
+                "input_text": ("STRING", {"multiline": True, "default": "A {*cute|big|small} {+cat|dog} is sitting on the __object__."}),
                 "processing_mode": (["entire text as one","line by line"],),
-                "processed_text_preview": ("STRING", {"multiline": True, "default": "", "output": True}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             },
+            "hidden": { "prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO" }
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING",)
@@ -163,7 +164,8 @@ class WildcardManager:
                 text = text[:match.start()] + text[match.end():].lstrip()
         return text
 
-    def process_text(self, wildcards_list, text, processing_mode, processed_text_preview, seed):
+    def process_text(self, wildcards_list, input_text, processing_mode, seed, **kwargs):
+        text = input_text
         if isinstance(text, list): text = "\n".join(text)
         rng = random.Random(seed)
         processed_texts = []
@@ -183,6 +185,6 @@ class WildcardManager:
         processed_string = "\n".join(processed_texts)
         
         return {
-            "ui": {"preview_list": processed_texts, "processed_text_preview": [processed_string]}, 
+            "ui": {"preview_list": processed_texts}, 
             "result": (processed_texts, processed_string, all_wc_str,)
         }
