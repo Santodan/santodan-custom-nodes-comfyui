@@ -219,6 +219,7 @@ class RandomLoRACustomModel:
         inputs = {
             "required": {
                 "model": ("MODEL",),
+                "clip": ("CLIP",),
                 "exclusive_mode": (["Off", "On"],),
                 "refresh_loras": ("BOOLEAN", {"default": False}),
                 "lora_count": ("INT", {"default": 0, "min": 0, "max": 10}),
@@ -237,8 +238,8 @@ class RandomLoRACustomModel:
 
         return inputs
 
-    RETURN_TYPES = ("MODEL", "STRING", "STRING")
-    RETURN_NAMES = ("MODEL", "applied_loras", "trigger_words")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING")
+    RETURN_NAMES = ("MODEL", "CLIP", "applied_loras", "trigger_words")
     FUNCTION = "apply_custom_random_loras"
     CATEGORY = "Santodan/LoRA"
     _last_refresh_state = {}
@@ -255,7 +256,7 @@ class RandomLoRACustomModel:
         return cls._last_refresh_state[node_key]
 
     def apply_custom_random_loras(
-        self, model, exclusive_mode, lora_count,
+        self, model, clip, exclusive_mode, lora_count,
         refresh_loras=False, extra_trigger_words="", **kwargs
     ):
         import time
@@ -281,7 +282,7 @@ class RandomLoRACustomModel:
                 indices.append(i)
 
         if not indices:
-            return (model, "None", extra_trigger_words)
+            return (model, clip, "None", extra_trigger_words)
 
         # 3. Determine which LoRAs to use
         selected_indices = []
@@ -299,6 +300,7 @@ class RandomLoRACustomModel:
 
         # 4. Apply selected LoRAs
         current_model = model
+        current_clip = clip
         applied_names = []
         trigger_words_list = []
         lora_loader = nodes.LoraLoader()
@@ -312,7 +314,8 @@ class RandomLoRACustomModel:
             strength = round(rng.uniform(min_s, max_s), 3)
             
             # Apply to Model (Clip=None, Strength_Clip=0)
-            current_model, _ = lora_loader.load_lora(current_model, None, name, strength, 0)
+            #current_model, _ = lora_loader.load_lora(current_model, None, name, strength, 0)
+            current_model, current_clip = lora_loader.load_lora(current_model, current_clip, name, strength, strength)
             
             #applied_names.append(f"{os.path.basename(name)} ({strength})")
             applied_names.append(f"{name} ({strength})")
@@ -342,7 +345,7 @@ class RandomLoRACustomModel:
                 })
         # -----------------------
 
-        return (current_model, applied_loras_str, trigger_words_str)
+        return (current_model, current_clip, applied_loras_str, trigger_words_str)
 
 class RandomLoRAFolder:
     _lora_info_cache = {}
@@ -552,6 +555,7 @@ class RandomLoRAFolderModel:
         inputs = {
             "required": {
                 "model": ("MODEL",),
+                "clip": ("CLIP",),
                 "exclusive_mode": (["Off", "On"],),
                 "refresh_loras": ("BOOLEAN", {"default": False}),
                 "force_refresh_cache": ("BOOLEAN", {"default": False}),
@@ -570,8 +574,8 @@ class RandomLoRAFolderModel:
             
         return inputs
 
-    RETURN_TYPES = ("MODEL", "STRING", "STRING")
-    RETURN_NAMES = ("MODEL", "applied_loras", "trigger_words")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING")
+    RETURN_NAMES = ("MODEL", "CLIP", "applied_loras", "trigger_words")
     FUNCTION = "apply_random_loras"
     CATEGORY = "Santodan/LoRA"
 
@@ -630,7 +634,7 @@ class RandomLoRAFolderModel:
         rng = rng or py_random
         return rng.sample(files_in_folder, actual_count)
 
-    def apply_random_loras(self, model, exclusive_mode, refresh_loras=False, force_refresh_cache=False, extra_trigger_words="", exclude_loras_from_node=None, **kwargs):
+    def apply_random_loras(self, model, clip, exclusive_mode, refresh_loras=False, force_refresh_cache=False, extra_trigger_words="", exclude_loras_from_node=None, **kwargs):
         # 1. Setup Selection RNG
         if refresh_loras:
             selection_rng = py_random.Random(py_random.randrange(1 << 30))
@@ -652,7 +656,7 @@ class RandomLoRAFolderModel:
                     valid_entries.append((lora_name, min_s, max_s))
 
         if not valid_entries:
-            return (model, "None Selected", extra_trigger_words)
+            return (model, clip, "None Selected", extra_trigger_words)
 
         # 3. Handle Mode
         selected_entries = [selection_rng.choice(valid_entries)] if exclusive_mode == "On" else valid_entries
@@ -664,6 +668,7 @@ class RandomLoRAFolderModel:
             strength_rng = py_random.Random(hash(str(selected_entries)) % (2**32))
 
         current_model = model
+        current_clip = clip
         applied_names = []
         trigger_words_list = []
         lora_loader = nodes.LoraLoader()
@@ -672,7 +677,7 @@ class RandomLoRAFolderModel:
             strength = round(strength_rng.uniform(min_s, max_s), 3)
             
             # Using the official ComfyUI LoraLoader.load_lora method
-            current_model, _ = lora_loader.load_lora(current_model, None, lora_name, strength, 0)
+            current_model, current_clip = lora_loader.load_lora(current_model, current_clip, lora_name, strength, strength)
             
             #applied_names.append(f"{os.path.basename(lora_name)} ({strength})")
             applied_names.append(f"{lora_name} ({strength})")
@@ -698,8 +703,8 @@ class RandomLoRAFolderModel:
                 })
         # -----------------------
 
-        return (current_model, applied_loras_str, trigger_words_str)
-
+        return (current_model, current_clip, applied_loras_str, trigger_words_str)
+    
 class ExcludedLoras:
     @classmethod
     def INPUT_TYPES(cls):
@@ -810,7 +815,6 @@ class LoRACachePreloader:
         final_cache_size = len(RandomLoRAFolder._lora_info_cache)
         status = f"Preloaded {processed_count}/{total_files} LoRAs from {folder_path} in {elapsed_time:.1f}s (errors: {error_count})"
         return (status, final_cache_size)
-
 
 class LoraMetadataHub:
     @classmethod
