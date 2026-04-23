@@ -175,7 +175,7 @@ You may need to add/edit the `modules/defs/ext/SantodanNodes.py` file to add the
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/Santodan/ComfyUI_santodan_custom_nodes
+git clone https://github.com/Santodan/santodan-custom-nodes-comfyui/
 ```
 
 Then restart ComfyUI.
@@ -185,7 +185,7 @@ Then restart ComfyUI.
 ### 🔁 Updating
 
 ```bash
-cd ComfyUI/custom_nodes/ComfyUI_santodan_custom_nodes
+cd ComfyUI/custom_nodes/santodan-custom-nodes-comfyui
 git pull
 ```
 
@@ -197,7 +197,7 @@ Restart ComfyUI to apply the update.
 
 ```bash
 cd ComfyUI/custom_nodes
-rm -rf ComfyUI_santodan_custom_nodes
+rm -rf santodan-custom-nodes-comfyui
 ```
 
 Restart ComfyUI.
