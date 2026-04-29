@@ -152,10 +152,24 @@ class RandomLoRACustom:
         max_strengths = [kwargs.get(f"max_strength_{i}") for i in range(1, 11)]
         active_loras = [name for name in lora_names if name and name != "None"]
 
+        help_text = (
+            "refresh_loras:\n"
+            " - True: Forces new randomization with time-based seed.\n"
+            " - False: Uses consistent seed based on parameters.\n\n"
+            "exclusive_mode:\n"
+            " - On: Selects only one random LoRA from the active list.\n"
+            " - Off: Uses lora_count to determine how many LoRAs to select.\n\n"
+            "stride:\n"
+            " - Currently ignored.\n\n"
+            "lora_count:\n"
+            " - 0: Random number of LoRAs (1\u2013total).\n"
+            " - >0: Exactly this number (or all available if fewer).\n"
+        )
+
         if not active_loras:
             if lora_stack:
-                return (list(lora_stack), "", "No active LoRAs found. Passing through input stack.")
-            return ([], "", "No active LoRAs found.")
+                return (list(lora_stack), "", help_text)
+            return ([], "", help_text)
 
         # Determine which LoRAs to use
         if exclusive_mode == "On":
@@ -195,20 +209,6 @@ class RandomLoRACustom:
             all_trigger_words.append(extra_trigger_words)
         trigger_words_string = ", ".join(all_trigger_words)
 
-        # Help text
-        help_text = (
-            "refresh_loras:\n"
-            " - True: Forces new randomization with time-based seed.\n"
-            " - False: Uses consistent seed based on parameters.\n\n"
-            "exclusive_mode:\n"
-            " - On: Selects only one random LoRA from the active list.\n"
-            " - Off: Uses lora_count to determine how many LoRAs to select.\n\n"
-            "stride:\n"
-            " - Currently ignored.\n\n"
-            "lora_count:\n"
-            " - 0: Random number of LoRAs (1–total).\n"
-            " - >0: Exactly this number (or all available if fewer).\n"
-        )
 
         return (output_loras, trigger_words_string, help_text)
 
@@ -238,8 +238,8 @@ class RandomLoRACustomModel:
 
         return inputs
 
-    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING")
-    RETURN_NAMES = ("MODEL", "CLIP", "applied_loras", "trigger_words")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("MODEL", "CLIP", "applied_loras", "trigger_words", "help_text")
     FUNCTION = "apply_custom_random_loras"
     CATEGORY = "Santodan/LoRA"
     _last_refresh_state = {}
@@ -281,8 +281,20 @@ class RandomLoRACustomModel:
             if name and name != "None":
                 indices.append(i)
 
+        help_text = (
+            "refresh_loras:\n"
+            " - True: Forces new randomization with time-based seed.\n"
+            " - False: Uses consistent seed based on parameters.\n\n"
+            "exclusive_mode:\n"
+            " - On: Selects only one random LoRA from the active list.\n"
+            " - Off: Uses lora_count to determine how many LoRAs to select.\n\n"
+            "lora_count:\n"
+            " - 0: Random number of LoRAs (1–total).\n"
+            " - >0: Exactly this number (or all available if fewer).\n"
+        )
+
         if not indices:
-            return (model, clip, "None", extra_trigger_words)
+            return (model, clip, "None", extra_trigger_words, help_text)
 
         # 3. Determine which LoRAs to use
         selected_indices = []
@@ -332,7 +344,6 @@ class RandomLoRACustomModel:
         applied_loras_str = ", ".join(applied_names)
         trigger_words_str = ", ".join(filter(None, trigger_words_list))
 
-        # --- ADD THIS BLOCK ---
         self.applied_lora_metadata = []
         # Re-parse or track the data used
         for name_str in applied_names:
@@ -343,9 +354,8 @@ class RandomLoRACustomModel:
                     "name": match.group(1).strip(),
                     "strength": float(match.group(2))
                 })
-        # -----------------------
 
-        return (current_model, current_clip, applied_loras_str, trigger_words_str)
+        return (current_model, current_clip, applied_loras_str, trigger_words_str, help_text)
 
 class RandomLoRAFolder:
     _lora_info_cache = {}
@@ -480,11 +490,21 @@ class RandomLoRAFolder:
                 for full_path in picked_loras:
                     valid_entries.append((full_path, min_strength, max_strength))
 
+        help_text = (
+            "refresh_loras:\n"
+            " - True: Forces new randomization for LoRAs and strengths.\n"
+            " - False: Maintains LoRA selection but regenerates strengths if min/max changed.\n\n"
+            f"Current cache size: {len(self._lora_info_cache)} LoRAs\n"
+            "exclusive_mode:\n"
+            " - On: Selects one random LoRA from all collected.\n"
+            " - Off: Uses all LoRAs from specified folders.\n"
+        )
+
         if not valid_entries:
             if lora_stack:
                 all_trigger_words = [extra_trigger_words] if extra_trigger_words else []
-                return list(lora_stack), ", ".join(all_trigger_words), "No valid folders selected. Passing through existing lora_stack."
-            return [], "", "No valid folders or LoRA files found."
+                return list(lora_stack), ", ".join(all_trigger_words), help_text
+            return [], "", help_text
 
         if exclusive_mode == "On":
             selected_entries = [selection_rng.choice(valid_entries)]
@@ -517,17 +537,6 @@ class RandomLoRAFolder:
             all_trigger_words.append(extra_trigger_words)
 
         trigger_words_string = ", ".join(all_trigger_words)
-        cache_size = len(self._lora_info_cache)
-
-        help_text = (
-            "refresh_loras:\n"
-            " - True: Forces new randomization for LoRAs and strengths.\n"
-            " - False: Maintains LoRA selection but regenerates strengths if min/max changed.\n\n"
-            f"Current cache size: {cache_size} LoRAs\n"
-            "exclusive_mode:\n"
-            " - On: Selects one random LoRA from all collected.\n"
-            " - Off: Uses all LoRAs from specified folders.\n"
-        )
 
         return output_loras, trigger_words_string, help_text
 
@@ -574,8 +583,8 @@ class RandomLoRAFolderModel:
             
         return inputs
 
-    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING")
-    RETURN_NAMES = ("MODEL", "CLIP", "applied_loras", "trigger_words")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("MODEL", "CLIP", "applied_loras", "trigger_words", "help_text")
     FUNCTION = "apply_random_loras"
     CATEGORY = "Santodan/LoRA"
 
@@ -655,8 +664,18 @@ class RandomLoRAFolderModel:
                 for lora_name in picked:
                     valid_entries.append((lora_name, min_s, max_s))
 
+        help_text = (
+            "refresh_loras:\n"
+            " - True: Forces new randomization for LoRAs and strengths.\n"
+            " - False: Maintains LoRA selection but regenerates strengths if min/max changed.\n\n"
+            f"Current cache size: {len(self._lora_info_cache)} LoRAs\n"
+            "exclusive_mode:\n"
+            " - On: Selects one random LoRA from all collected.\n"
+            " - Off: Uses all LoRAs from specified folders.\n"
+        )
+
         if not valid_entries:
-            return (model, clip, "None Selected", extra_trigger_words)
+            return (model, clip, "None Selected", extra_trigger_words, help_text)
 
         # 3. Handle Mode
         selected_entries = [selection_rng.choice(valid_entries)] if exclusive_mode == "On" else valid_entries
@@ -692,7 +711,6 @@ class RandomLoRAFolderModel:
         applied_loras_str = ", ".join(applied_names)
         trigger_words_str = ", ".join(filter(None, trigger_words_list))
 
-        # --- ADD THIS BLOCK ---
         self.applied_lora_metadata = []
         for name_str in applied_names:
             match = re.search(r"(.+?)\s\(([-+]?\d*\.?\d+)\)", name_str)
@@ -701,9 +719,18 @@ class RandomLoRAFolderModel:
                     "name": match.group(1).strip(),
                     "strength": float(match.group(2))
                 })
-        # -----------------------
 
-        return (current_model, current_clip, applied_loras_str, trigger_words_str)
+        help_text = (
+            "refresh_loras:\n"
+            " - True: Forces new randomization for LoRAs and strengths.\n"
+            " - False: Maintains LoRA selection but regenerates strengths if min/max changed.\n\n"
+            f"Current cache size: {len(self._lora_info_cache)} LoRAs\n"
+            "exclusive_mode:\n"
+            " - On: Selects one random LoRA from all collected.\n"
+            " - Off: Uses all LoRAs from specified folders.\n"
+        )
+
+        return (current_model, current_clip, applied_loras_str, trigger_words_str, help_text)
     
 class ExcludedLoras:
     @classmethod
