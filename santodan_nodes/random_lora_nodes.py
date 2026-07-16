@@ -844,6 +844,8 @@ class LoRACachePreloader:
         return (status, final_cache_size)
 
 class LoraMetadataHub:
+    runtime_loras = {}
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -856,17 +858,40 @@ class LoraMetadataHub:
                 "loras_2": ("STRING", {"forceInput": True}),
                 "loras_3": ("STRING", {"forceInput": True}),
                 "extra_metadata_text": ("STRING", {"forceInput": True}),
-            }
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+            },
         }
 
     RETURN_TYPES = ("MODEL", "STRING")
     RETURN_NAMES = ("MODEL", "combined_loras")
     FUNCTION = "process"
     CATEGORY = "Santodan/Metadata"
+    # Keep this node in the executed graph even when only its MODEL output is
+    # consumed.  Metadata extensions can then retrieve combined_loras from the
+    # runtime cache instead of trying to resolve dynamic STRING links again.
+    OUTPUT_NODE = True
 
-    def process(self, model, **kwargs):
+    def process(self, model, unique_id=None, **kwargs):
         # Combine all input LoRA strings into one for easy viewing
         lora_inputs = [kwargs.get(f"loras_{i}", "") for i in range(1, 4)]
         extra = kwargs.get("extra_metadata_text", "")
-        combined = ", ".join(filter(None, lora_inputs + [extra]))
-        return (model, combined)
+        combined = ", ".join(
+            value.strip()
+            for value in lora_inputs + [extra]
+            if isinstance(value, str)
+            and value.strip()
+            and value.strip().lower() != "none"
+        )
+
+        if unique_id is not None:
+            type(self).runtime_loras[str(unique_id)] = combined
+
+        # Returning a UI value makes ComfyUI retain a node-id-tagged cache
+        # entry.  revived_comfyui_image_metadata_extension uses that entry to
+        # read output slot 1 (combined_loras) on current ComfyUI versions.
+        return {
+            "ui": {"combined_loras": [combined]},
+            "result": (model, combined),
+        }
