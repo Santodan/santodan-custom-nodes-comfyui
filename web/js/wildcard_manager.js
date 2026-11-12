@@ -1,6 +1,6 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
-import { ComfyDialog, $el } from "/scripts/ui.js";
+const { ComfyDialog, $el } = window.comfyAPI.ui;
 
 const style = `
 .santodan-preview-container {
